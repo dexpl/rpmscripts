@@ -69,11 +69,13 @@ done
 shift $((${OPTIND} - 1))
 
 srpms=$@
-[ -n "${srpms}" ] || error_exit "No source RPM(s) specified"
-[ -n "${DEBUG}" ] && echo '$srpms is '"${srpms}"
 
 [ -n  "${show_help}" ] && usage exit
 [ -n  "${ls_chroots}" ] && list_chroots && exit
+
+[ -n "${srpms}" ] || error_exit "No source RPM(s) specified"
+[ -n "${DEBUG}" ] && echo '$srpms is '"${srpms}"
+
 [ -n  "${chroot}" ] && {
   mockopts="-r ${chroot}"
   echo Using chroot ${chroot}
