@@ -33,7 +33,7 @@ list_chroots () {
 
 # Чего хочется:
 # 1) указать, какой chroot использовать
-# 3) (когда-нибудь) обрабатывать больше одного .src.rpm за раз
+# 3) (когда-нибудь) обрабатывать больше одного .src.rpm за раз (man mockchain?)
 # 4) (когда-нибудь) показать имя и версию и выйти
 
 # Let it be -c aka --chroot to set chroot to build into (optional)
@@ -63,6 +63,7 @@ do
 done
 
 srpms=$@
+[ -n "${srpms}" ] || error_exit "No source RPM(s) specified"
 [ -n "${DEBUG}" ] && echo '$srpms is '"${srpms}"
 
 [ -n  "${show_help}" ] && usage exit
