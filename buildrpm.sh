@@ -6,16 +6,27 @@
 set -e
 [ -n "${DEBUG}" ] && set -x
 
+mockconfdir=/etc/mock
+
 usage () {
 	echo Help is not yet implemented
 	echo
+}
+
+# Echoes $1 to stderr, calls usage() and exits with $2 exit code (1 if omitted)
+error_exit () {
+	exec 1>&2
+	echo ${1:-"Unspecified fatal error occured"}
+	echo
+	usage
+	exit ${2:-1}
 }
 
 list_chroots () {
 # chroot listing is done in a naive assumption that mock conf dir is always
 # /etc/mock and chroot conf file names have <distname>-<releasever>-<arch>.cfg
 # format
-	find /etc/mock/ -name '*-*-*'.cfg -type f -printf '%f\n' | sed 's/\.cfg//' | sort -n
+	find "${mockconfdir}" -name '*-*-*'.cfg -type f -printf '%f\n' | sed 's/\.cfg//' | sort -n
 }
 
 # Чего хочется:
@@ -44,10 +55,7 @@ do
 			echo "-${OPTARG}: unimplemented option"
 		;;
 		* )
-			echo "-${OPTARG}: unknown option, exiting" >&2
-			echo >&2
-			usage >&2
-			exit 1
+			error_exit "-${OPTARG}: unknown option, exiting"
 		;; # Default.
 	esac
 done
@@ -64,13 +72,12 @@ srpms=$@
   mockopts="-r ${chroot}"
   echo Using chroot ${chroot}
 }
-echo Still here
-exit 0
+
 srpm=${1}
 read srcrpmdir sourcedir specdir rpmdir <<< $(rpm -E %_srcrpmdir -E %_sourcedir -E %_specdir -E %_rpmdir)
 # TODO somehow let the user choose which chroot to use
 # TODO do not hardcode /var/lib/mock
-mockdir="/var/lib/mock/$(basename $(readlink -f /etc/mock/default.cfg ) .cfg)/result"
+mockdir="/var/lib/mock/$(basename $(readlink -f "${mockconfdir}"/${chroot:-default}.cfg ) .cfg)/result"
 
 # Build an rpm (or rpms)
 mock "${srpm}" || less -F "${mockdir}/build.log"
