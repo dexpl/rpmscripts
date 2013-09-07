@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 # Builds a binary rpm package within mock chroot from .src.rpm given
 # Usage: ${0} srpm >&2
@@ -62,6 +62,8 @@ do
 	esac
 done
 
+shift $((${OPTIND} - 1))
+
 srpms=$@
 [ -n "${srpms}" ] || error_exit "No source RPM(s) specified"
 [ -n "${DEBUG}" ] && echo '$srpms is '"${srpms}"
@@ -80,7 +82,7 @@ read srcrpmdir sourcedir specdir rpmdir <<< $(rpm -E %_srcrpmdir -E %_sourcedir 
 mockdir="/var/lib/mock/$(basename $(readlink -f "${mockconfdir}"/${chroot:-default}.cfg ) .cfg)/result"
 
 # Build an rpm (or rpms)
-mock "${srpm}" || less -F "${mockdir}/build.log"
+mock ${mockopts} "${srpm}" || less -F "${mockdir}/build.log"
 # ...and move 'em into %_srcrpmdir (.src.rpm) or %_rpmdir (.rpm)
 find "${mockdir}" \( -name '*.src.rpm' -exec mv -vt "${srcrpmdir}" '{}' + \) \
 	-o \( -name '*.rpm' -exec mv -vt "${rpmdir}" '{}' + \)

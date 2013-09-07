@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 # Just builds srpm package within mock chroot from .spec file given
 # Usage: $0 spec >&2
