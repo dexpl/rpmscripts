@@ -7,6 +7,7 @@ set -e
 [ -n "${DEBUG}" ] && set -x
 
 mockconfdir=/etc/mock
+mockdefaultchroot=${mockconfdir}/default.cfg
 
 # Displays usage information and exits if $1 is set
 usage () {
@@ -56,6 +57,9 @@ do
 		v )
 			echo "-${OPTARG}: unimplemented option"
 		;;
+		\: )
+			error_exit "-${OPTARG}: option requires an argument"
+		;; # Default.
 		* )
 			error_exit "-${OPTARG}: unknown option, exiting"
 		;; # Default.
@@ -77,9 +81,8 @@ srpms=$@
 
 srpm=${1}
 read srcrpmdir sourcedir specdir rpmdir <<< $(rpm -E %_srcrpmdir -E %_sourcedir -E %_specdir -E %_rpmdir)
-# TODO somehow let the user choose which chroot to use
 # TODO do not hardcode /var/lib/mock
-mockdir="/var/lib/mock/$(basename $(readlink -f "${mockconfdir}"/${chroot:-default}.cfg ) .cfg)/result"
+mockdir="/var/lib/mock/${chroot:-$(basename $(readlink -f "${mockdefaultchroot}") .cfg)}/result"
 
 # Build an rpm (or rpms)
 mock ${mockopts} "${srpm}" || less -F "${mockdir}/build.log"
