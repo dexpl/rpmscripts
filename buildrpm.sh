@@ -8,9 +8,11 @@ set -e
 
 mockconfdir=/etc/mock
 
+# Displays usage information and exits if $1 is set
 usage () {
 	echo Help is not yet implemented
 	echo
+	[ -n "${1}" ] && exit
 }
 
 # Echoes $1 to stderr, calls usage() and exits with $2 exit code (1 if omitted)
@@ -63,10 +65,7 @@ done
 srpms=$@
 [ -n "${DEBUG}" ] && echo '$srpms is '"${srpms}"
 
-[ -n  "${show_help}" ] && {
-	usage
-	exit
-}
+[ -n  "${show_help}" ] && usage exit
 [ -n  "${ls_chroots}" ] && list_chroots && exit
 [ -n  "${chroot}" ] && {
   mockopts="-r ${chroot}"
