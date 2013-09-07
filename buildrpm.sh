@@ -11,9 +11,15 @@ usage () {
 	echo
 }
 
+list_chroots () {
+# chroot listing is done in a naive assumption that mock conf dir is always
+# /etc/mock and chroot conf file names have <distname>-<releasever>-<arch>.cfg
+# format
+	find /etc/mock/ -name '*-*-*'.cfg -type f -printf '%f\n' | sed 's/\.cfg//' | sort -n
+}
+
 # Чего хочется:
 # 1) указать, какой chroot использовать
-# 2) перечислить доступные chroot'ы и выйти
 # 3) (когда-нибудь) обрабатывать больше одного .src.rpm за раз
 # 4) (когда-нибудь) показать имя и версию и выйти
 
@@ -53,7 +59,7 @@ srpms=$@
 	usage
 	exit
 }
-[ -n  "${ls_chroots}" ] && echo 'Listing chroots (not impl. yet)'
+[ -n  "${ls_chroots}" ] && list_chroots && exit
 [ -n  "${chroot}" ] && {
   mockopts="-r ${chroot}"
   echo Using chroot ${chroot}
