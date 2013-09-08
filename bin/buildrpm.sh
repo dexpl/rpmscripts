@@ -32,7 +32,7 @@ _EOF
 # Echoes $1 to stderr, calls usage() and exits with $2 exit code (1 if omitted)
 error_exit () {
 	exec 1>&2
-	echo ${1:-"Unspecified fatal error occured"}
+	echo -e '\E[31m\033[1m'${1:-"Unspecified fatal error occured"}'\033[0m'
 	echo
 	usage
 	exit ${2:-1}
