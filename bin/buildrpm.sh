@@ -23,10 +23,6 @@ Build a binary rpm package within mock chroot from .src.rpm given.
 
   Result RPM(s) are moved to $(rpm -E %_rpmdir). Result SRPM is moved to $(rpm -E %_srcrpmdir). If build completed with error build.log is shown.
 _EOF
-	return
-	echo Help is not yet implemented
-	echo
-	[ -n "${1}" ] && exit
 }
 
 # Echoes $1 to stderr, calls usage() and exits with $2 exit code (1 if omitted)
@@ -48,11 +44,6 @@ list_chroots () {
 # Чего хочется:
 # 3) (когда-нибудь) обрабатывать больше одного .src.rpm за раз (man mockchain?)
 # 4) (когда-нибудь) показать имя и версию и выйти
-
-# Let it be -c aka --chroot to set chroot to build into (optional)
-# Let it be -h aka --help to display help (optional; does nothing at this moment)
-# Let it be -l aka --list-chroots to list possible chroots (optional)
-# Let it be -v aka --version to display name and version than exit (optional; does nothing at this moment)
 
 while getopts ":c:hlv" opt
 do
