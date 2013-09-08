@@ -1,0 +1,41 @@
+# vi:set filetype=sh:
+
+set -e
+[ -n "${RPMSCRIPTS_DEBUG}" ] && set -x
+
+mockconfdir=/etc/mock
+mockdefaultchroot=${mockconfdir}/default.cfg
+read srcrpmdir sourcedir specdir rpmdir <<< $(rpm -E %_srcrpmdir -E %_sourcedir -E %_specdir -E %_rpmdir)
+
+# Displays usage information and exits if $1 is set
+usage () {
+	(sed '/^#/d;s/_/\t/g' | fold -s | less -F) <<_EOF
+#Usage: $(basename ${0}) [options] SRPM [SRPM] ...
+Usage: $(basename ${0}) [options] SRPM
+Build a binary rpm package within mock chroot from .src.rpm given.
+
+  -c CHROOT_Set CHROOT to use (same as mock -r CHROOT); default is used if unset
+  -l__List possibe CHROOTs and exit
+  -h__Show this message and exit
+#  -v__Show version information and exit
+
+  Result RPM(s) are moved to $(rpm -E %_rpmdir). Result SRPM is moved to $(rpm -E %_srcrpmdir). If build completed with error build.log is shown.
+_EOF
+}
+
+# Echoes $1 to stderr, calls usage() and exits with $2 exit code (1 if omitted)
+error_exit () {
+	exec 1>&2
+	echo -e '\E[31m\033[1m'${1:-"Unspecified fatal error occured"}'\033[0m'
+	echo
+	usage
+	exit ${2:-1}
+}
+
+list_chroots () {
+# chroot listing is done in a naive assumption that mock conf dir is always
+# /etc/mock and chroot conf file names have <distname>-<releasever>-<arch>.cfg
+# format
+	find "${mockconfdir}" -name '*-*-*'.cfg -type f -printf '%f\n' | sed 's/\.cfg//' | sort -n
+}
+

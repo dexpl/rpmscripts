@@ -1,49 +1,14 @@
 #!/bin/bash
 
-# Builds a binary rpm package within mock chroot from .src.rpm given
+# Build a binary rpm package within mock chroot from .src.rpm given
 # Usage: ${0} srpm >&2
 
-set -e
-[ -n "${DEBUG}" ] && set -x
+# TODO:
+# 1) make a library for common functions
+# 3) (some day) process more than one .src.rpm at once (man mockchain?)
+# 4) (some day) show name and version and exit
 
-mockconfdir=/etc/mock
-mockdefaultchroot=${mockconfdir}/default.cfg
-
-# Displays usage information and exits if $1 is set
-usage () {
-	(sed '/^#/d;s/_/\t/g' | fold -s | less -F) <<_EOF
-#Usage: $(basename ${0}) [options] SRPM [SRPM] ...
-Usage: $(basename ${0}) [options] SRPM
-Build a binary rpm package within mock chroot from .src.rpm given.
-
-  -c CHROOT_Set CHROOT to use (same as mock -r CHROOT); default is used if unset
-  -l__List possibe CHROOTs and exit
-  -h__Show this message and exit
-#  -v__Show version information and exit
-
-  Result RPM(s) are moved to $(rpm -E %_rpmdir). Result SRPM is moved to $(rpm -E %_srcrpmdir). If build completed with error build.log is shown.
-_EOF
-}
-
-# Echoes $1 to stderr, calls usage() and exits with $2 exit code (1 if omitted)
-error_exit () {
-	exec 1>&2
-	echo -e '\E[31m\033[1m'${1:-"Unspecified fatal error occured"}'\033[0m'
-	echo
-	usage
-	exit ${2:-1}
-}
-
-list_chroots () {
-# chroot listing is done in a naive assumption that mock conf dir is always
-# /etc/mock and chroot conf file names have <distname>-<releasever>-<arch>.cfg
-# format
-	find "${mockconfdir}" -name '*-*-*'.cfg -type f -printf '%f\n' | sed 's/\.cfg//' | sort -n
-}
-
-# Чего хочется:
-# 3) (когда-нибудь) обрабатывать больше одного .src.rpm за раз (man mockchain?)
-# 4) (когда-нибудь) показать имя и версию и выйти
+. $(dirname $0)/../lib/rpmscripts_functions
 
 while getopts ":c:hlv" opt
 do
@@ -78,7 +43,7 @@ srpms=$@
 [ -n  "${ls_chroots}" ] && list_chroots && exit
 
 [ -n "${srpms}" ] || error_exit "No source RPM(s) specified"
-[ -n "${DEBUG}" ] && echo '$srpms is '"${srpms}"
+[ -n "${RPMSCRIPTS_DEBUG}" ] && echo '$srpms is '"${srpms}"
 
 [ -n  "${chroot}" ] && {
   mockopts="-r ${chroot}"
@@ -86,7 +51,6 @@ srpms=$@
 }
 
 srpm=${1}
-read srcrpmdir sourcedir specdir rpmdir <<< $(rpm -E %_srcrpmdir -E %_sourcedir -E %_specdir -E %_rpmdir)
 # TODO do not hardcode /var/lib/mock
 mockdir="/var/lib/mock/${chroot:-$(basename $(readlink -f "${mockdefaultchroot}") .cfg)}/result"
 
