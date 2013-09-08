@@ -11,6 +11,19 @@ mockdefaultchroot=${mockconfdir}/default.cfg
 
 # Displays usage information and exits if $1 is set
 usage () {
+	(sed '/^#/d;s/_/\t/g' | fold -s | less -F) <<_EOF
+#Usage: $(basename ${0}) [options] SRPM [SRPM] ...
+Usage: $(basename ${0}) [options] SRPM
+Build a binary rpm package within mock chroot from .src.rpm given.
+
+  -c CHROOT_Set CHROOT to use (same as mock -r CHROOT); default is used if unset
+  -l__List possibe CHROOTs and exit
+  -h__Show this message and exit
+#  -v__Show version information and exit
+
+  Result RPM(s) are moved to $(rpm -E %_rpmdir). Result SRPM is moved to $(rpm -E %_srcrpmdir). If build completed with error build.log is shown.
+_EOF
+	return
 	echo Help is not yet implemented
 	echo
 	[ -n "${1}" ] && exit
@@ -33,7 +46,6 @@ list_chroots () {
 }
 
 # Чего хочется:
-# 1) указать, какой chroot использовать
 # 3) (когда-нибудь) обрабатывать больше одного .src.rpm за раз (man mockchain?)
 # 4) (когда-нибудь) показать имя и версию и выйти
 
@@ -49,9 +61,11 @@ do
 			chroot=${OPTARG}
 		;;
 		h )
-			show_help=1
+			usage
+			exit
 		;;
 		l )
+# Not listing chroots right here because it would break the logic of -h (just show usage info and exit)
 			ls_chroots=1
 		;;
 		v )
@@ -70,7 +84,6 @@ shift $((${OPTIND} - 1))
 
 srpms=$@
 
-[ -n  "${show_help}" ] && usage exit
 [ -n  "${ls_chroots}" ] && list_chroots && exit
 
 [ -n "${srpms}" ] || error_exit "No source RPM(s) specified"
