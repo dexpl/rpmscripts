@@ -39,7 +39,12 @@ spec="${1}"
 case "$(file -b --mime-type "${spec}")" in
 	application/x-rpm)
 		srcrpm="${spec}"
-		unset spec
+		if [ -z "${localbuild}" ]; then
+			unset spec
+		else
+			rpm -ihv "${srcrpm}"
+			spec="$(rpm -E %{_specdir})/$(rpm -qp --qf '%{name}.spec' ${srcrpm})"
+		fi
 	;;
 	text/plain)
 		srcrpm="$(rpm -q --qf '%{name}-%{version}-%{release}\n' --specfile "${spec}" | head -n 1).src.rpm"
