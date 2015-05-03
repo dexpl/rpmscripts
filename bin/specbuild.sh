@@ -57,37 +57,18 @@ esac
 
 srcrpmdir="$(rpm -E %{_srcrpmdir})"
 
-if [ -z "${chroot}" ]; then
-# If building inside mock chroot
-	if [ -z "{localbuild}" ]; then
-		chroot="$(basename $(readlink -f /etc/mock/default.cfg) .cfg)"
-		chrootdir="$(mock -p -r "${chroot}")"
-# TODO do not hardcode ../result
-		resultdir="${chrootdir}../result"
-		read chrootname chrootver chrootarch ign <<< ${chroot//-/ }
-	else
-# We do a local build, so the only possible "chroot" is our current system
-		read chrootname chrootver chrootarch <<< $(rpm -q --qf '%{name} %{version} %{arch}' --whatprovides system-release)
-		chrootname=${chrootname/-release/}
-	fi
-fi
-
-# Where to move result (s)rpms
-baserepodir=/srv/custom
-case "${chrootname}" in
-  centos)
-    srcrpmdir_moveto="${baserepodir}/${chrootname}/${chrootver}/SRPMS"
-# debuginfo rpm path
-    debugrpmdir_moveto="${baserepodir}/${chrootname}/${chrootver}/${chrootarch}/debug"
-    rpmdir_moveto="${baserepodir}/${chrootname}/${chrootver}/${chrootarch}"
-  ;;
-  fedora | rfremix)
-    srcrpmdir_moveto="${baserepodir}/fedora/${chrootver}/source/SRPMS"
-# debuginfo rpm path
-    debugrpmdir_moveto="${baserepodir}/fedora/${chrootver}/${chrootarch}/debug"
-    rpmdir_moveto="${baserepodir}/fedora/${chrootver}/${chrootarch}/os"
-  ;;
-esac
+#if [ -z "{localbuild}" ]; then
+## If building inside mock chroot
+#	[ -z "${chroot}" ] && chroot="$(basename $(readlink -f /etc/mock/default.cfg) .cfg)"
+#	chrootdir="$(mock -p -r "${chroot}")"
+## TODO do not hardcode ../result
+#	resultdir="${chrootdir}../result"
+#	read chrootname chrootver chrootarch ign <<< ${chroot//-/ }
+#else
+## We do a local build, so the only possible "chroot" is our current system
+#	read chrootname chrootver chrootarch <<< $(rpm -q --qf '%{name} %{version} %{arch}' --whatprovides system-release)
+#	chrootname=${chrootname/-release/}
+#fi
 
 [ -n "${spec}" ] && {
 	spectool -R -g "${spec}"
@@ -96,13 +77,32 @@ esac
 	[ -n "${cleanup}" ] && rpmbuild --clean --rmsource --rmspec --nodeps "${spec}"
 	srcrpm="${srcrpmdir}/${srcrpm}"
 }
+
 if [ -z "${localbuild}" ]; then
+	[ -z "${chroot}" ] && chroot="$(basename $(readlink -f /etc/mock/default.cfg) .cfg)"
 	mock -r "${chroot}" "${srcrpm}"
 else
 	rpmbuild -bb "${spec}"
 fi
 
 [ -z "${nomove}" ] && {
+# Where to move result (s)rpms
+	baserepodir=/srv/custom
+	case "${chrootname}" in
+		centos)
+			srcrpmdir_moveto="${baserepodir}/${chrootname}/${chrootver}/SRPMS"
+# debuginfo rpm path
+			debugrpmdir_moveto="${baserepodir}/${chrootname}/${chrootver}/${chrootarch}/debug"
+			rpmdir_moveto="${baserepodir}/${chrootname}/${chrootver}/${chrootarch}"
+		;;
+		fedora | rfremix)
+			srcrpmdir_moveto="${baserepodir}/fedora/${chrootver}/source/SRPMS"
+# debuginfo rpm path
+			debugrpmdir_moveto="${baserepodir}/fedora/${chrootver}/${chrootarch}/debug"
+			rpmdir_moveto="${baserepodir}/fedora/${chrootver}/${chrootarch}/os"
+		;;
+	esac
+
 	[ -d "${srcrpmdir_moveto}" -a -d "${debugrpmdir_moveto}" -a -d "${rpmdir_moveto}" ] && \
 		find "${resultdir}" \( -name \*.src.rpm -exec mv -vt "${srcrpmdir_moveto}" '{}' + \) \
 			-o \( -name '*-debuginfo*.rpm' -exec mv -vt "${debugrpmdir_moveto}" '{}' + \) \
