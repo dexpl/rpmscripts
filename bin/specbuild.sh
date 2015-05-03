@@ -17,7 +17,9 @@ do
     l) lint=1 ;;
     L)
 			localbuild=1
-			echo "Warning: any chroot set via command line are ignored in local builds" >&2
+			echo "Warning: doing local build, any chroot set via command line are ignored" >&2
+			echo "Warning: doing local build, won't move results" >&2
+			nomove=1
 		;;
     M) nomove=1 ;;
     r) chroot="$OPTARG" ;;
@@ -57,14 +59,16 @@ if [ -z "${chroot}" ]; then
 		chrootdir="$(mock -p -r "${chroot}")"
 # TODO do not hardcode ../result
 		resultdir="${chrootdir}../result"
+		read chrootname chrootver chrootarch ign <<< ${chroot//-/ }
 	else
-
+# We do a local build, so the only possible "chroot" is our current system
+		read chrootname chrootver chrootarch <<< $(rpm -q --qf '%{name} %{version} %{arch}' --whatprovides system-release)
+		chrootname=${chrootname/-release/}
 	fi
 fi
 
 # Where to move result (s)rpms
 baserepodir=/srv/custom
-read chrootname chrootver chrootarch ign <<< ${chroot//-/ }
 case "${chrootname}" in
   centos)
     srcrpmdir_moveto="${baserepodir}/${chrootname}/${chrootver}/SRPMS"
@@ -87,8 +91,12 @@ esac
 	[ -n "${cleanup}" ] && rpmbuild --clean --rmsource --rmspec --nodeps "${spec}"
 	srcrpm="${srcrpmdir}/${srcrpm}"
 }
-mock -r "${chroot}" "${srcrpm}"
-#set -x
+if [ -z "${localbuild}" ]; then
+	mock -r "${chroot}" "${srcrpm}"
+else
+	rpmbuild -bb "${spec}"
+fi
+
 [ -z "${nomove}" ] && {
 	[ -d "${srcrpmdir_moveto}" -a -d "${debugrpmdir_moveto}" -a -d "${rpmdir_moveto}" ] && \
 		find "${resultdir}" \( -name \*.src.rpm -exec mv -vt "${srcrpmdir_moveto}" '{}' + \) \
