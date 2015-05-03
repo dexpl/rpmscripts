@@ -1,3 +1,4 @@
 buildrpm.sh	Builds a binary rpm package within mock chroot from .src.rpm given
 buildsrpm.sh	Builds srpm package within mock chroot from .spec file given
 rebuildsrpm.sh	Rebuilds srpm given within mock chroot for Fedora release specified
+specbuild.sh	TODO
