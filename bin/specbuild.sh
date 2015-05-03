@@ -10,12 +10,15 @@ set -e
 # -L work "locally", don't involve mock at all
 # -M do not move the results into repo dir
 # -r <chroot> use specified chroot
-while getopts ":lMr:" Option
+while getopts ":lLMr:" Option
 do
   case $Option in
     c) cleanup=1 ;;
     l) lint=1 ;;
-    L) localbuild=1 ;;
+    L)
+			localbuild=1
+			echo "Warning: any chroot set via command line are ignored in local builds" >&2
+		;;
     M) nomove=1 ;;
     r) chroot="$OPTARG" ;;
     *)
@@ -44,10 +47,17 @@ esac
 
 srcrpmdir="$(rpm -E %{_srcrpmdir})"
 
-[ -z "${chroot}" ] && chroot="$(basename $(readlink -f /etc/mock/default.cfg) .cfg)"
-chrootdir="$(mock -p -r "${chroot}")"
+if [ -z "${chroot}" ]; then
+# If building inside mock chroot
+	if [ -z "{localbuild}" ]; then
+		chroot="$(basename $(readlink -f /etc/mock/default.cfg) .cfg)"
+		chrootdir="$(mock -p -r "${chroot}")"
 # TODO do not hardcode ../result
-resultdir="${chrootdir}../result"
+		resultdir="${chrootdir}../result"
+	else
+
+	fi
+fi
 
 # Where to move result (s)rpms
 baserepodir=/srv/custom
