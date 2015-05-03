@@ -10,23 +10,12 @@
 
 . $(dirname $0)/../lib/rpmscripts_functions
 
-# Sets some variables for chroot given in $1
-select_chroot () {
-	[ $# -ne 1 ] && return 1
-	chroot=${1}
-	mockopts="-r ${chroot}"
-	echo Using chroot ${chroot}
-
-	srpm=${1}
-# TODO do not hardcode /var/lib/mock
-	mockdir="/var/lib/mock/${chroot:-$(basename $(readlink -f "${mockdefaultchroot}") .cfg)}/result"
-}
-
 while getopts ":c:hlv" opt
 do
 	case ${opt} in
 		c )
 			select_chroot "${OPTARG}"
+			echo "dbg: ${mockdir}, ${mockopts}"
 		;;
 		h )
 			usage
@@ -62,5 +51,6 @@ srpm=${1}
 # Build an rpm (or rpms)
 mock ${mockopts} "${srpm}" || less -F "${mockdir}/build.log"
 # ...and move 'em into %_srcrpmdir (.src.rpm) or %_rpmdir (.rpm)
+set -x
 find "${mockdir}" \( -name '*.src.rpm' -exec mv -vt "${srcrpmdir}" '{}' + \) \
 	-o \( -name '*.rpm' -exec mv -vt "${rpmdir}" '{}' + \)

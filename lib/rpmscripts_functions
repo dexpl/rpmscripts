@@ -7,7 +7,7 @@ mockconfdir=/etc/mock
 mockdefaultchroot=${mockconfdir}/default.cfg
 read srcrpmdir sourcedir specdir rpmdir <<< $(rpm -E %_srcrpmdir -E %_sourcedir -E %_specdir -E %_rpmdir)
 
-# Displays usage information and exits if $1 is set
+# Display usage information and exits if $1 is set
 usage () {
 	(sed '/^#/d;s/_/\t/g' | fold -s | less -F) <<_EOF
 #Usage: $(basename ${0}) [options] SRPM [SRPM] ...
@@ -23,13 +23,25 @@ Build a binary rpm package within mock chroot from .src.rpm given.
 _EOF
 }
 
-# Echoes $1 to stderr, calls usage() and exits with $2 exit code (1 if omitted)
+# Echo $1 to stderr, call usage() and exit with $2 exit code (1 if omitted)
 error_exit () {
 	exec 1>&2
 	echo -e '\E[31m\033[1m'${1:-"Unspecified fatal error occured"}'\033[0m'
 	echo
 	usage
 	exit ${2:-1}
+}
+
+# Set some variables for chroot given in $1
+select_chroot () {
+	[ $# -ne 1 ] && return 1
+	chroot=${1}
+	mockopts="-r ${chroot}"
+	echo Using chroot ${chroot}
+
+	srpm=${1}
+# TODO do not hardcode /var/lib/mock
+	mockdir="/var/lib/mock/${chroot:-$(basename $(readlink -f "${mockdefaultchroot}") .cfg)}/result"
 }
 
 list_chroots () {
