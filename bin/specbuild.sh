@@ -10,7 +10,7 @@ set -e
 # -L work "locally", don't involve mock at all
 # -M do not move the results into repo dir
 # -r <chroot> use specified chroot
-while getopts ":lLMr:" Option
+while getopts ":lLMr:v" Option
 do
   case $Option in
     c) cleanup=1 ;;
@@ -21,6 +21,7 @@ do
 		;;
     M) nomove=1 ;;
     r) chroot="$OPTARG" ;;
+		v) verbose=1 ;;
     *)
       echo "Unknown option ${Option} ${OPTARG}, aborting">&2
       exit 1
@@ -29,6 +30,8 @@ do
 done
 
 shift $(($OPTIND - 1))
+
+[ -n "${verbose}" ] && set -x
 
 spec="${1}"
 case "$(file -b --mime-type "${spec}")" in
