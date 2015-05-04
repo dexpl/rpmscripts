@@ -8,6 +8,16 @@
 #
 #Т. е. все _предельно_просто_: mktemp'аем временный каталог, говорим, чтобы результаты шли в него, находим в нем .rpm'ки и раскладываем их как нужно (последнее _уже_ реализовано, осталось "намекнуть" про каталог). Единственный неочевидный момент — архитектура.
 
+_cleanup() {
+	[ -d "${resultdir}" ] && rm "${resultdir}"
+}
+
+_full_cleanup() {
+ [ -f "${spec}" ] && rpmbuild --clean --rmsource --rmspec --nodeps "${spec}"
+ _cleanup
+}
+
+trap _cleanup EXIT HUP INT QUIT ABRT
 set -e
 
 # Where to move result (s)rpms
@@ -39,7 +49,9 @@ _check_dirs() {
 while getopts ":lLMr:v" Option
 do
   case $Option in
-    c) cleanup=1 ;;
+    c) cleanup=1
+			trap _full_cleanup EXIT
+		;;
     l) lint=1 ;;
     L)
 			localbuild=1
@@ -61,19 +73,19 @@ shift $(($OPTIND - 1))
 
 [ -n "${verbose}" ] && set -x
 
-[ -n "${1}" ] && srcrpm="${1}" || {
+[ -n "${1}" ] && spec="${1}" || {
 	echo "Error: no source specified" >&2
 	exit 1
 }
 
-case "$(file -b --mime-type "${srcrpm}")" in
+case "$(file -b --mime-type "${spec}")" in
 	application/x-rpm) : ;;
 	text/plain)
 # If $1 is a .spec file build an .src.rpm
-		spectool -R -g "${srcrpm}"
-		rpmbuild -bs "${srcrpm}"
-		[ -n "${cleanup}" ] && rpmbuild --clean --rmsource --rmspec --nodeps "${srcrpm}"
-		srcrpm="$(rpm -E %{_srcrpmdir})/$(rpm -q --qf '%{name}-%{version}-%{release}\n' --specfile "${srcrpm}" | head -n 1).src.rpm"
+		spectool -R -g "${spec}"
+		rpmbuild -bs "${spec}"
+#		[ -n "${cleanup}" ] && rpmbuild --clean --rmsource --rmspec --nodeps "${spec}"
+		spec="$(rpm -E %{_srcrpmdir})/$(rpm -q --qf '%{name}-%{version}-%{release}\n' --specfile "${spec}" | head -n 1).src.rpm"
 	;;
 	*)
 		echo "${1} is neither an .src.rpm nor a .spec file, aborting" >&2
@@ -81,7 +93,7 @@ case "$(file -b --mime-type "${srcrpm}")" in
 	;;
 esac
 
-[ -n "${lint}" ] && rpmlint "${srcrpm}"
+[ -n "${lint}" ] && rpmlint "${spec}"
 
 # TODO check if chroot set inside checking for local build
 if [ -n "${chroot}" ]; then
@@ -119,7 +131,7 @@ else
 	_check_dirs "${resultdir}" && buildcommand="${buildcommand} --resultdir=${resultdir}"
 fi
 
-${buildcommand} "${srcrpm}"
+${buildcommand} "${spec}"
 
 # If nomove was not set there's no resultdir
 # If there was a fatal error while making resultdir, we never get to this point
@@ -150,5 +162,6 @@ _check_dirs "${resultdir}" && {
 	_check_dirs "${srcrpmdir_moveto}" "${debugrpmdir_moveto}" "${rpmdir_moveto}" ] && \
 		find "${resultdir}" \( -name \*.src.rpm -exec ${mv} "${srcrpmdir_moveto}" '{}' + \) \
 			-o \( -name '*-debuginfo*.rpm' -exec ${mv} "${debugrpmdir_moveto}" '{}' + \) \
-			-o \( -name '*.rpm' -exec ${mv} "${rpmdir_moveto}" '{}' + \) && refreshcustomrepo 
+			-o \( -name '*.rpm' -exec ${mv} "${rpmdir_moveto}" '{}' + \) && refreshcustomrepo
+	rm -r "${resultdir}"
 }
