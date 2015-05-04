@@ -61,7 +61,7 @@ if [ -z "${localbuild}" ]; then
 	[ -z "${chroot}" ] && chroot="$(basename $(readlink -f /etc/mock/default.cfg) .cfg)"
 	mock -r "${chroot}" "${srcrpm}"
 else
-	rpmbuild -bb "${srcrpm}"
+	rpmbuild --rebuild "${srcrpm}"
 fi
 
 [ -z "${nomove}" ] && {
