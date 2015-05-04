@@ -1,7 +1,9 @@
 #!/bin/sh
 
-# Builds given rpm spec inside a mock chroot and puts it into an appropriate
-# local repository
+# Builds given .src.rpm or an rpm spec inside a mock chroot and puts it into an
+# appropriate local repository
+
+# TODO consider arch while doing local builds
 
 set -e
 
@@ -25,7 +27,7 @@ do
     r) chroot="$OPTARG" ;;
 		v) verbose=1 ;;
     *)
-      echo "Unknown option ${Option} ${OPTARG}, aborting">&2
+      echo "Unknown option ${Option} ${OPTARG}, aborting" >&2
       exit 1
     ;;
   esac
