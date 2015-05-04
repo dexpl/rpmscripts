@@ -35,19 +35,19 @@ shift $(($OPTIND - 1))
 
 [ -n "${verbose}" ] && set -x
 
-spec="${1}"
-case "$(file -b --mime-type "${spec}")" in
-	application/x-rpm)
-		srcrpm="${spec}"
-		if [ -z "${localbuild}" ]; then
-			unset spec
-		else
-			rpm -ihv "${srcrpm}"
-			spec="$(rpm -E %{_specdir})/$(rpm -qp --qf '%{name}.spec' ${srcrpm})"
-		fi
-	;;
+[ -n "${1}" ] && srcrpm="${1}" || {
+	echo "Error: no source specified" >&2
+	exit 1
+}
+
+case "$(file -b --mime-type "${srcrpm}")" in
+	application/x-rpm) : ;;
 	text/plain)
-		srcrpm="$(rpm -q --qf '%{name}-%{version}-%{release}\n' --specfile "${spec}" | head -n 1).src.rpm"
+# If $1 is a .spec file build an .src.rpm
+		spectool -R -g "${srcrpm}"
+		rpmbuild -bs "${srcrpm}"
+		[ -n "${cleanup}" ] && rpmbuild --clean --rmsource --rmspec --nodeps "${srcrpm}"
+		srcrpm="$(rpm -E %{_srcrpmdir})/$(rpm -q --qf '%{name}-%{version}-%{release}\n' --specfile "${srcrpm}" | head -n 1).src.rpm"
 	;;
 	*)
 		echo "${1} is neither an .src.rpm nor a .spec file, aborting" >&2
@@ -55,20 +55,13 @@ case "$(file -b --mime-type "${spec}")" in
 	;;
 esac
 
-[ -n "${spec}" ] && {
-	spectool -R -g "${spec}"
-	[ -n "${lint}" ] && rpmlint "${spec}"
-	rpmbuild -bs "${spec}"
-	[ -n "${cleanup}" ] && rpmbuild --clean --rmsource --rmspec --nodeps "${spec}"
-	srcrpmdir="$(rpm -E %{_srcrpmdir})"
-	srcrpm="${srcrpmdir}/${srcrpm}"
-}
+[ -n "${lint}" ] && rpmlint "${srcrpm}"
 
 if [ -z "${localbuild}" ]; then
 	[ -z "${chroot}" ] && chroot="$(basename $(readlink -f /etc/mock/default.cfg) .cfg)"
 	mock -r "${chroot}" "${srcrpm}"
 else
-	rpmbuild -bb "${spec}"
+	rpmbuild -bb "${srcrpm}"
 fi
 
 [ -z "${nomove}" ] && {
