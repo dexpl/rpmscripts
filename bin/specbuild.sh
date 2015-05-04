@@ -120,7 +120,7 @@ _check_dirs "${baserepodir}" && resultdir="$(mktemp -d)"
 if [ -n "${localbuild}" ]; then
 	buildcommand="rpmbuild"
 # TODO FIXME setarch is likely not the way, maybe -D '_target_cpu' should be used instead
-	[ -n "${targetarch}" -a "${targetarch}" != "$(arch)" ] && buildcommand="setarch ${targetarch} ${buildcommand}"
+	[ -n "${targetarch}" -a "${targetarch}" != "$(arch)" -a "${targetarch}" != "noarch" ] && buildcommand="setarch ${targetarch} ${buildcommand}"
 #	[ -d "${resultdir}" ] && buildcommand="${buildcommand} -D '%_rpmdir ${resultdir}'"
 	_check_dirs "${resultdir}" && buildcommand="${buildcommand} -D '%_rpmdir ${resultdir}'"
 else
