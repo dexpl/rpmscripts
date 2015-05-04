@@ -3,7 +3,10 @@
 # Builds given .src.rpm or an rpm spec inside a mock chroot and puts it into an
 # appropriate local repository
 
-# TODO consider arch while doing local builds
+#Локальная сборка: переместить результат из %{_rpmdir}/$(arch) и %{_srcrpmdir} в репы — разные для %{name}.rpm, %{name}-debuginfo.rpm и %{name}.src.rpm. Учесть, что .noarch кладется в %{_rpmdir}/noarch. Можно ли как-то сказать rpmbuild'у, куда складывать результат? Теоретически, да — см. %_rpmfilename. ПРАКТИЧЕСКИ ДА — см. %_rpmdir!
+#Сборка внутри mock chroot: mktemp'нуть временный каталог, указать его mock'у как resultdir, переместить результат из него в репы (см. выше).
+#
+#Т. е. все _предельно_просто_: mktemp'аем временный каталог, говорим, чтобы результаты шли в него, находим в нем .rpm'ки и раскладываем их как нужно (последнее _уже_ реализовано, осталось "намекнуть" про каталог). Единственный неочевидный момент — архитектура.
 
 set -e
 
@@ -67,6 +70,9 @@ esac
 #fi
 
 [ -n "${chroot}" ] && read targetname targetver targetarch ign <<< ${chroot//-/ }
+
+[ -z "${nomove}" ] && resultdir="$(mktemp -d)"
+
 
 # Determine the build command
 if [ -n "${localbuild}" ]; then
