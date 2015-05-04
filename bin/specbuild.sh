@@ -69,10 +69,16 @@ esac
 #	rpmbuild --rebuild "${srcrpm}"
 #fi
 
-[ -n "${chroot}" ] && read targetname targetver targetarch ign <<< ${chroot//-/ }
+if [ -n "${chroot}" ]; then
+	read targetname targetver targetarch ign <<< ${chroot//-/ }
+else
+	[ -z "${localbuild}" ] && {
+		mockconfig="$(basename $(readlink -f /etc/mock/default.cfg) .cfg)"
+		read targetname targetver targetarch ign <<< ${mockconfig//-/ }
+	}
+fi
 
 [ -z "${nomove}" ] && resultdir="$(mktemp -d)"
-
 
 # Determine the build command
 if [ -n "${localbuild}" ]; then
@@ -80,24 +86,23 @@ if [ -n "${localbuild}" ]; then
 #	[ -n "${targetarch}" -a "${targetarch}" != "$(arch)" -a "${targetarch}" != "noarch" ] && buildcommand="setarch ${targetarch} ${buildcommand}"
 # TODO FIXME setarch is likely not the way, maybe -D '_target_cpu' should be used instead
 	[ -n "${targetarch}" -a "${targetarch}" != "$(arch)" ] && buildcommand="setarch ${targetarch} ${buildcommand}"
+	[ -d "${resultdir}" ] && buildcommand="${buildcommand} -D '%_rpmdir ${resultdir}'"
 else
 	buildcommand="mock"
 	[ -n "${chroot}" ] && buildcommand="${buildcommand} -r ${chroot}"
+	[ -d "${resultdir}" ] && buildcommand="${buildcommand} --resultdir=${resultdir}"
 fi
 
 ${buildcommand} "${srcrpm}"
 
-[ -z "${nomove}" ] && {
+[ -d "${resultdir}" ] && {
 # Where to move result (s)rpms
 	baserepodir=/srv/custom
 
 	if [ -z "${localbuild}" ]; then
 # If building inside mock chroot
 # TODO do not hardcode ../result
-# TODO I'm uncertain about presuming ${buildcommand} to be either "mock" or
-# "mock -r <chroot>"
-		resultdir="$("${buildcommand}")../result"
-		read targetname targetver targetarch ign <<< ${chroot//-/ }
+#		read targetname targetver targetarch ign <<< ${chroot//-/ }
 	else
 # We do a local build, so the only possible "chroot" is our current system
 		read targetname targetver targetarch <<< $(rpm -q --qf '%{name} %{version} %{arch}' --whatprovides system-release)
