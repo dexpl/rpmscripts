@@ -10,6 +10,9 @@
 
 set -e
 
+# Where to move result (s)rpms
+baserepodir=/srv/custom
+
 # -c remove sources and spec after building src.rpm
 # -l call rpmlint
 # -L work "locally", don't involve mock at all
@@ -24,9 +27,9 @@ do
 			localbuild=1
 			echo "Warning: doing local build, any chroot set via command line are ignored" >&2
 			echo "Warning: doing local build, won't move results" >&2
-			nomove=1
+			unset baserepodir
 		;;
-    M) nomove=1 ;;
+    M) unset baserepodir ;;
     r) chroot="$OPTARG" ;;
 		v) verbose=1 ;;
     *)
@@ -62,52 +65,44 @@ esac
 
 [ -n "${lint}" ] && rpmlint "${srcrpm}"
 
-#if [ -z "${localbuild}" ]; then
-#	[ -z "${chroot}" ] && chroot="$(basename $(readlink -f /etc/mock/default.cfg) .cfg)"
-#	mock -r "${chroot}" "${srcrpm}"
-#else
-#	rpmbuild --rebuild "${srcrpm}"
-#fi
-
+# TODO check if chroot set inside checking for local build
 if [ -n "${chroot}" ]; then
 	read targetname targetver targetarch ign <<< ${chroot//-/ }
 else
-	[ -z "${localbuild}" ] && {
+	if [ -n "${localbuild}" ]; then
+# We do a local build, so the only possible "chroot" is our current system
+		read targetname targetver targetarch <<< $(rpm -q --qf '%{name} %{version} %{arch}' --whatprovides system-release)
+		targetname=${targetname/-release/}
+	else
 		mockconfig="$(basename $(readlink -f /etc/mock/default.cfg) .cfg)"
 		read targetname targetver targetarch ign <<< ${mockconfig//-/ }
-	}
+	fi
 fi
 
-[ -z "${nomove}" ] && resultdir="$(mktemp -d)"
+if [ -d "${baserepodir}" ]; then
+	resultdir="$(mktemp -d)"
+else
+	echo "Warning: ${baserepodir} is not a directory, won't move result" >&2
+fi
 
 # Determine the build command
 if [ -n "${localbuild}" ]; then
 	buildcommand="rpmbuild"
-#	[ -n "${targetarch}" -a "${targetarch}" != "$(arch)" -a "${targetarch}" != "noarch" ] && buildcommand="setarch ${targetarch} ${buildcommand}"
 # TODO FIXME setarch is likely not the way, maybe -D '_target_cpu' should be used instead
 	[ -n "${targetarch}" -a "${targetarch}" != "$(arch)" ] && buildcommand="setarch ${targetarch} ${buildcommand}"
 	[ -d "${resultdir}" ] && buildcommand="${buildcommand} -D '%_rpmdir ${resultdir}'"
 else
-	buildcommand="mock"
-	[ -n "${chroot}" ] && buildcommand="${buildcommand} -r ${chroot}"
+#	buildcommand="mock"
+#	[ -n "${chroot}" ] && buildcommand="${buildcommand} -r ${chroot}"
+	buildcommand="mock -r ${chroot:-${mockconfig}}"
 	[ -d "${resultdir}" ] && buildcommand="${buildcommand} --resultdir=${resultdir}"
 fi
 
 ${buildcommand} "${srcrpm}"
 
+# If nomove was not set there's no resultdir
+# If there was a fatal error while making resultdir, we never get to this point
 [ -d "${resultdir}" ] && {
-# Where to move result (s)rpms
-	baserepodir=/srv/custom
-
-	if [ -z "${localbuild}" ]; then
-# If building inside mock chroot
-# TODO do not hardcode ../result
-#		read targetname targetver targetarch ign <<< ${chroot//-/ }
-	else
-# We do a local build, so the only possible "chroot" is our current system
-		read targetname targetver targetarch <<< $(rpm -q --qf '%{name} %{version} %{arch}' --whatprovides system-release)
-		targetname=${targetname/-release/}
-	fi
 
 	case "${targetname}" in
 		centos)
