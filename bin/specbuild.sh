@@ -46,7 +46,7 @@ _check_dirs() {
 # -L work "locally", don't involve mock at all
 # -M do not move the results into repo dir
 # -r <chroot> use specified chroot
-while getopts ":lLMr:v" Option
+while getopts ":clLMr:v" Option
 do
   case $Option in
     c) cleanup=1
@@ -62,6 +62,10 @@ do
     M) unset baserepodir ;;
     r) chroot="$OPTARG" ;;
 		v) verbose=1 ;;
+    \:)
+      echo "Option -${OPTARG} requires an argument, aborting" >&2
+      exit 1
+    ;;
     *)
       echo "Unknown option -${OPTARG}, aborting" >&2
       exit 1
