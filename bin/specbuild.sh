@@ -12,11 +12,6 @@ _cleanup() {
 	[ -d "${resultdir}" ] && rm -r "${resultdir}"
 }
 
-_full_cleanup() {
- [ -f "${spec}" ] && rpmbuild --clean --rmsource --rmspec --nodeps "${spec}"
- _cleanup
-}
-
 trap _cleanup EXIT HUP INT QUIT ABRT
 set -e
 
@@ -50,7 +45,6 @@ while getopts ":clLMr:v" Option
 do
   case $Option in
     c) cleanup=1
-			trap _full_cleanup EXIT
 		;;
     l) lint=1 ;;
     L)
@@ -87,7 +81,7 @@ case "$(file -b --mime-type "${spec}")" in
 	text/plain)
 # If $1 is a .spec file build an .src.rpm
 		spectool -R -g "${spec}"
-		rpmbuild -bs "${spec}"
+		rpmbuild -bs ${cleanup:- --clean --rmsource --rmspec} "${spec}"
 #		[ -n "${cleanup}" ] && rpmbuild --clean --rmsource --rmspec --nodeps "${spec}"
 		spec="$(rpm -E %{_srcrpmdir})/$(rpm -q --qf '%{name}-%{version}-%{release}\n' --specfile "${spec}" | head -n 1).src.rpm"
 	;;
