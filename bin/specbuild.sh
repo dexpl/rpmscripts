@@ -13,6 +13,24 @@ set -e
 # Where to move result (s)rpms
 baserepodir=/srv/custom
 
+## Echo a warning if $1 is not a directory
+#_check_dir() {
+#	[ -d "${1}" ] || {
+#		echo "Warning: ${1} is not a directory, results (if any) won't be moved" >&2
+#		return 1
+#	}
+#}
+
+# Echo a warning if any of $@ is not a directory
+_check_dirs() {
+	for dir in $@ ; do
+		[ -d "${dir}" ] || {
+			echo "Warning: ${dir} is not a directory, results (if any) won't be moved" >&2
+			return 1
+	}
+	done
+}
+
 # -c remove sources and spec after building src.rpm
 # -l call rpmlint
 # -L work "locally", don't involve mock at all
@@ -79,30 +97,33 @@ else
 	fi
 fi
 
-if [ -d "${baserepodir}" ]; then
-	resultdir="$(mktemp -d)"
-else
-	echo "Warning: ${baserepodir} is not a directory, won't move result" >&2
-fi
+#if [ -d "${baserepodir}" ]; then
+#	resultdir="$(mktemp -d)"
+#else
+#	echo "Warning: ${baserepodir} is not a directory, won't move result" >&2
+#fi
+_check_dirs "${baserepodir}" && resultdir="$(mktemp -d)"
 
 # Determine the build command
 if [ -n "${localbuild}" ]; then
 	buildcommand="rpmbuild"
 # TODO FIXME setarch is likely not the way, maybe -D '_target_cpu' should be used instead
 	[ -n "${targetarch}" -a "${targetarch}" != "$(arch)" ] && buildcommand="setarch ${targetarch} ${buildcommand}"
-	[ -d "${resultdir}" ] && buildcommand="${buildcommand} -D '%_rpmdir ${resultdir}'"
+#	[ -d "${resultdir}" ] && buildcommand="${buildcommand} -D '%_rpmdir ${resultdir}'"
+	_check_dirs "${resultdir}" && buildcommand="${buildcommand} -D '%_rpmdir ${resultdir}'"
 else
 #	buildcommand="mock"
 #	[ -n "${chroot}" ] && buildcommand="${buildcommand} -r ${chroot}"
 	buildcommand="mock -r ${chroot:-${mockconfig}}"
-	[ -d "${resultdir}" ] && buildcommand="${buildcommand} --resultdir=${resultdir}"
+#	[ -d "${resultdir}" ] && buildcommand="${buildcommand} --resultdir=${resultdir}"
+	_check_dirs "${resultdir}" && buildcommand="${buildcommand} --resultdir=${resultdir}"
 fi
 
 ${buildcommand} "${srcrpm}"
 
 # If nomove was not set there's no resultdir
 # If there was a fatal error while making resultdir, we never get to this point
-[ -d "${resultdir}" ] && {
+_check_dirs "${resultdir}" && {
 
 	case "${targetname}" in
 		centos)
@@ -119,9 +140,15 @@ ${buildcommand} "${srcrpm}"
 		;;
 	esac
 
-	[ -d "${srcrpmdir_moveto}" -a -d "${debugrpmdir_moveto}" -a -d "${rpmdir_moveto}" ] && \
-		find "${resultdir}" \( -name \*.src.rpm -exec mv -vt "${srcrpmdir_moveto}" '{}' + \) \
-			-o \( -name '*-debuginfo*.rpm' -exec mv -vt "${debugrpmdir_moveto}" '{}' + \) \
-			-o \( -name '*.rpm' -exec mv -vt "${rpmdir_moveto}" '{}' + \)
-	refreshcustomrepo 
+#	[ -d "${srcrpmdir_moveto}" -a -d "${debugrpmdir_moveto}" -a -d "${rpmdir_moveto}" ] && \
+#		find "${resultdir}" \( -name \*.src.rpm -exec mv -vt "${srcrpmdir_moveto}" '{}' + \) \
+#			-o \( -name '*-debuginfo*.rpm' -exec mv -vt "${debugrpmdir_moveto}" '{}' + \) \
+#			-o \( -name '*.rpm' -exec mv -vt "${rpmdir_moveto}" '{}' + \)
+#	refreshcustomrepo
+	mv="mv"
+	[ -n "${verbose}" ] && mv="${mv} -vt" || mv="${mv} -t"
+	_check_dirs "${srcrpmdir_moveto}" "${debugrpmdir_moveto}" "${rpmdir_moveto}" ] && \
+		find "${resultdir}" \( -name \*.src.rpm -exec ${mv} "${srcrpmdir_moveto}" '{}' + \) \
+			-o \( -name '*-debuginfo*.rpm' -exec ${mv} "${debugrpmdir_moveto}" '{}' + \) \
+			-o \( -name '*.rpm' -exec ${mv} "${rpmdir_moveto}" '{}' + \) && refreshcustomrepo 
 }
