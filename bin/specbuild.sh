@@ -59,12 +59,27 @@ esac
 
 [ -n "${lint}" ] && rpmlint "${srcrpm}"
 
-if [ -z "${localbuild}" ]; then
-	[ -z "${chroot}" ] && chroot="$(basename $(readlink -f /etc/mock/default.cfg) .cfg)"
-	mock -r "${chroot}" "${srcrpm}"
+#if [ -z "${localbuild}" ]; then
+#	[ -z "${chroot}" ] && chroot="$(basename $(readlink -f /etc/mock/default.cfg) .cfg)"
+#	mock -r "${chroot}" "${srcrpm}"
+#else
+#	rpmbuild --rebuild "${srcrpm}"
+#fi
+
+# Determine the build command
+read resultname resultver resultarch ign <<< ${chroot//-/ }
+if [ -n "${localbuild}" ]; then
+	buildcommand="rpmbuild"
+#	[ -n "${resultarch}" -a "${resultarch}" != "$(arch)" -a "${resultarch}" != "noarch" ] && buildcommand="setarch ${resultarch} ${buildcommand}"
+#TODO FIXME setarch is likely not the way, maybe -D '_target_cpu' should be used instead
+	[ -n "${resultarch}" -a "${resultarch}" != "$(arch)" ] && buildcommand="setarch ${resultarch} ${buildcommand}"
 else
-	rpmbuild --rebuild "${srcrpm}"
+	buildcommand="mock"
+	[ -n "${chroot}" ] && buildcommand="${buildcommand} -r ${chroot}"
 fi
+
+echo ${buildcommand} "${srcrpm}"
+exit 0
 
 [ -z "${nomove}" ] && {
 # Where to move result (s)rpms
