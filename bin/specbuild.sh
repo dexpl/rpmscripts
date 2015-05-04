@@ -55,26 +55,12 @@ case "$(file -b --mime-type "${spec}")" in
 	;;
 esac
 
-srcrpmdir="$(rpm -E %{_srcrpmdir})"
-
-#if [ -z "{localbuild}" ]; then
-## If building inside mock chroot
-#	[ -z "${chroot}" ] && chroot="$(basename $(readlink -f /etc/mock/default.cfg) .cfg)"
-#	chrootdir="$(mock -p -r "${chroot}")"
-## TODO do not hardcode ../result
-#	resultdir="${chrootdir}../result"
-#	read chrootname chrootver chrootarch ign <<< ${chroot//-/ }
-#else
-## We do a local build, so the only possible "chroot" is our current system
-#	read chrootname chrootver chrootarch <<< $(rpm -q --qf '%{name} %{version} %{arch}' --whatprovides system-release)
-#	chrootname=${chrootname/-release/}
-#fi
-
 [ -n "${spec}" ] && {
 	spectool -R -g "${spec}"
 	[ -n "${lint}" ] && rpmlint "${spec}"
 	rpmbuild -bs "${spec}"
 	[ -n "${cleanup}" ] && rpmbuild --clean --rmsource --rmspec --nodeps "${spec}"
+	srcrpmdir="$(rpm -E %{_srcrpmdir})"
 	srcrpm="${srcrpmdir}/${srcrpm}"
 }
 
@@ -88,18 +74,31 @@ fi
 [ -z "${nomove}" ] && {
 # Where to move result (s)rpms
 	baserepodir=/srv/custom
-	case "${chrootname}" in
+
+	if [ -z "{localbuild}" ]; then
+# If building inside mock chroot
+# TODO do not hardcode ../result
+		chrootdir="$(mock -p -r "${chroot}")"
+		resultdir="${chrootdir}../result"
+		read resultname resultver resultarch ign <<< ${chroot//-/ }
+	else
+# We do a local build, so the only possible "chroot" is our current system
+		read resultname resultver resultarch <<< $(rpm -q --qf '%{name} %{version} %{arch}' --whatprovides system-release)
+		resultname=${resultname/-release/}
+	fi
+
+	case "${resultname}" in
 		centos)
-			srcrpmdir_moveto="${baserepodir}/${chrootname}/${chrootver}/SRPMS"
+			srcrpmdir_moveto="${baserepodir}/${resultname}/${resultver}/SRPMS"
 # debuginfo rpm path
-			debugrpmdir_moveto="${baserepodir}/${chrootname}/${chrootver}/${chrootarch}/debug"
-			rpmdir_moveto="${baserepodir}/${chrootname}/${chrootver}/${chrootarch}"
+			debugrpmdir_moveto="${baserepodir}/${resultname}/${resultver}/${resultarch}/debug"
+			rpmdir_moveto="${baserepodir}/${resultname}/${resultver}/${resultarch}"
 		;;
 		fedora | rfremix)
-			srcrpmdir_moveto="${baserepodir}/fedora/${chrootver}/source/SRPMS"
+			srcrpmdir_moveto="${baserepodir}/fedora/${resultver}/source/SRPMS"
 # debuginfo rpm path
-			debugrpmdir_moveto="${baserepodir}/fedora/${chrootver}/${chrootarch}/debug"
-			rpmdir_moveto="${baserepodir}/fedora/${chrootver}/${chrootarch}/os"
+			debugrpmdir_moveto="${baserepodir}/fedora/${resultver}/${resultarch}/debug"
+			rpmdir_moveto="${baserepodir}/fedora/${resultver}/${resultarch}/os"
 		;;
 	esac
 
