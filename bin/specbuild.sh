@@ -118,11 +118,13 @@ _check_dirs "${baserepodir}" && resultdir="$(mktemp -d)"
 
 # Determine the build command
 if [ -n "${localbuild}" ]; then
-	buildcommand="rpmbuild"
+	buildcommand="rpmbuild --rebuild"
 # TODO FIXME setarch is likely not the way, maybe -D '_target_cpu' should be used instead
 	[ -n "${targetarch}" -a "${targetarch}" != "$(arch)" -a "${targetarch}" != "noarch" ] && buildcommand="setarch ${targetarch} ${buildcommand}"
-#	[ -d "${resultdir}" ] && buildcommand="${buildcommand} -D '%_rpmdir ${resultdir}'"
-	_check_dirs "${resultdir}" && buildcommand="${buildcommand} -D '%_rpmdir ${resultdir}'"
+#	[ -d "${resultdir}" ] && buildcommand="${buildcommand} -D '_rpmdir ${resultdir}'"
+# http://stackoverflow.com/a/13365648
+#	_check_dirs "${resultdir}" && buildcommand="${buildcommand} -D '_rpmdir ${resultdir}'"
+	_check_dirs "${resultdir}" && buildopts=(-D "_rpmdir ${resultdir}")
 else
 #	buildcommand="mock"
 #	[ -n "${chroot}" ] && buildcommand="${buildcommand} -r ${chroot}"
@@ -131,7 +133,10 @@ else
 	_check_dirs "${resultdir}" && buildcommand="${buildcommand} --resultdir=${resultdir}"
 fi
 
-${buildcommand} "${spec}"
+echo ${buildcommand} "${buildopts[@]}" "${spec}"
+${buildcommand} "${buildopts[@]}" "${spec}"
+#unset resultdir
+#exit 0
 
 # If nomove was not set there's no resultdir
 # If there was a fatal error while making resultdir, we never get to this point
@@ -159,7 +164,7 @@ _check_dirs "${resultdir}" && {
 #	refreshcustomrepo
 	mv="mv"
 	[ -n "${verbose}" ] && mv="${mv} -vt" || mv="${mv} -t"
-	_check_dirs "${srcrpmdir_moveto}" "${debugrpmdir_moveto}" "${rpmdir_moveto}" ] && \
+	_check_dirs "${srcrpmdir_moveto}" "${debugrpmdir_moveto}" "${rpmdir_moveto}" && \
 		find "${resultdir}" \( -name \*.src.rpm -exec ${mv} "${srcrpmdir_moveto}" '{}' + \) \
 			-o \( -name '*-debuginfo*.rpm' -exec ${mv} "${debugrpmdir_moveto}" '{}' + \) \
 			-o \( -name '*.rpm' -exec ${mv} "${rpmdir_moveto}" '{}' + \) && refreshcustomrepo
