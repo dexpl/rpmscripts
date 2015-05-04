@@ -66,49 +66,50 @@ esac
 #	rpmbuild --rebuild "${srcrpm}"
 #fi
 
+[ -n "${chroot}" ] && read targetname targetver targetarch ign <<< ${chroot//-/ }
+
 # Determine the build command
-read resultname resultver resultarch ign <<< ${chroot//-/ }
 if [ -n "${localbuild}" ]; then
 	buildcommand="rpmbuild"
-#	[ -n "${resultarch}" -a "${resultarch}" != "$(arch)" -a "${resultarch}" != "noarch" ] && buildcommand="setarch ${resultarch} ${buildcommand}"
-#TODO FIXME setarch is likely not the way, maybe -D '_target_cpu' should be used instead
-	[ -n "${resultarch}" -a "${resultarch}" != "$(arch)" ] && buildcommand="setarch ${resultarch} ${buildcommand}"
+#	[ -n "${targetarch}" -a "${targetarch}" != "$(arch)" -a "${targetarch}" != "noarch" ] && buildcommand="setarch ${targetarch} ${buildcommand}"
+# TODO FIXME setarch is likely not the way, maybe -D '_target_cpu' should be used instead
+	[ -n "${targetarch}" -a "${targetarch}" != "$(arch)" ] && buildcommand="setarch ${targetarch} ${buildcommand}"
 else
 	buildcommand="mock"
 	[ -n "${chroot}" ] && buildcommand="${buildcommand} -r ${chroot}"
 fi
 
-echo ${buildcommand} "${srcrpm}"
-exit 0
+${buildcommand} "${srcrpm}"
 
 [ -z "${nomove}" ] && {
 # Where to move result (s)rpms
 	baserepodir=/srv/custom
 
-	if [ -z "{localbuild}" ]; then
+	if [ -z "${localbuild}" ]; then
 # If building inside mock chroot
 # TODO do not hardcode ../result
-		chrootdir="$(mock -p -r "${chroot}")"
-		resultdir="${chrootdir}../result"
-		read resultname resultver resultarch ign <<< ${chroot//-/ }
+# TODO I'm uncertain about presuming ${buildcommand} to be either "mock" or
+# "mock -r <chroot>"
+		resultdir="$("${buildcommand}")../result"
+		read targetname targetver targetarch ign <<< ${chroot//-/ }
 	else
 # We do a local build, so the only possible "chroot" is our current system
-		read resultname resultver resultarch <<< $(rpm -q --qf '%{name} %{version} %{arch}' --whatprovides system-release)
-		resultname=${resultname/-release/}
+		read targetname targetver targetarch <<< $(rpm -q --qf '%{name} %{version} %{arch}' --whatprovides system-release)
+		targetname=${targetname/-release/}
 	fi
 
-	case "${resultname}" in
+	case "${targetname}" in
 		centos)
-			srcrpmdir_moveto="${baserepodir}/${resultname}/${resultver}/SRPMS"
+			srcrpmdir_moveto="${baserepodir}/${targetname}/${targetver}/SRPMS"
 # debuginfo rpm path
-			debugrpmdir_moveto="${baserepodir}/${resultname}/${resultver}/${resultarch}/debug"
-			rpmdir_moveto="${baserepodir}/${resultname}/${resultver}/${resultarch}"
+			debugrpmdir_moveto="${baserepodir}/${targetname}/${targetver}/${targetarch}/debug"
+			rpmdir_moveto="${baserepodir}/${targetname}/${targetver}/${targetarch}"
 		;;
 		fedora | rfremix)
-			srcrpmdir_moveto="${baserepodir}/fedora/${resultver}/source/SRPMS"
+			srcrpmdir_moveto="${baserepodir}/fedora/${targetver}/source/SRPMS"
 # debuginfo rpm path
-			debugrpmdir_moveto="${baserepodir}/fedora/${resultver}/${resultarch}/debug"
-			rpmdir_moveto="${baserepodir}/fedora/${resultver}/${resultarch}/os"
+			debugrpmdir_moveto="${baserepodir}/fedora/${targetver}/${targetarch}/debug"
+			rpmdir_moveto="${baserepodir}/fedora/${targetver}/${targetarch}/os"
 		;;
 	esac
 
