@@ -27,7 +27,7 @@ do
     r) chroot="$OPTARG" ;;
 		v) verbose=1 ;;
     *)
-      echo "Unknown option ${Option} ${OPTARG}, aborting" >&2
+      echo "Unknown option -${OPTARG}, aborting" >&2
       exit 1
     ;;
   esac
