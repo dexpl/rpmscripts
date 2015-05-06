@@ -28,23 +28,36 @@ baserepodir=/srv/custom
 
 # Echo a warning if any of $@ is not a directory
 _check_dirs() {
-	for dir in $@ ; do
+#	set +e
+	for dir in "${@}" ; do
+		echo "Checking dir '${dir}'" >&2
 		[ -d "${dir}" ] || {
-			echo "Warning: ${dir} is not a directory, results (if any) won't be moved" >&2
+			echo "Warning: ${dir} is not a directory" >&2
 			return 1
-	}
+		}
 	done
+	echo "returning 0" >&2
+	return 0
+#	set -e
 }
+
+
+_check_dirs / /usr && echo Fuck || echo Yep
+_check_dirs ~ '' && echo Fuck || echo Yep
+exit 0
 
 # -c remove sources and spec after building src.rpm
 # -l call rpmlint
 # -L work "locally", don't involve mock at all
 # -M do not move the results into repo dir
 # -r <chroot> use specified chroot
-while getopts ":clLMr:v" Option
+# -u .src.rpm URL
+while getopts ":clLMr:u:v" Option
 do
   case $Option in
-    c) cleanup=1
+    c)
+		#cleanup=1
+		echo "Warning: cleaning is a bit broken for now" >&2
 		;;
     l) lint=1 ;;
     L)
@@ -55,6 +68,7 @@ do
 		;;
     M) unset baserepodir ;;
     r) chroot="$OPTARG" ;;
+		u) srcrpmurl="${1}"
 		v) verbose=1 ;;
     \:)
       echo "Option -${OPTARG} requires an argument, aborting" >&2
@@ -71,19 +85,25 @@ shift $(($OPTIND - 1))
 
 [ -n "${verbose}" ] && set -x
 
-[ -n "${1}" ] && spec="${1}" || {
+if [ -n "${1}" ]; then
+	spec="${1}"
+elif [ -n "${srcrpmurl}" ]; then
+	srcrpmdir="$(rpm -E %_srcrpmdir)"
+	wget -cP "${srcrpmdir}" -t0 "${srcrpmurl}"
+	exec $(readlink -f "${0}") "$@" "${srcrpmdir}/$(basename "${url}")"
+else
 	echo "Error: no source specified" >&2
 	exit 1
-}
+fi
 
 case "$(file -b --mime-type "${spec}")" in
 	application/x-rpm) : ;;
 	text/plain)
 # If $1 is a .spec file build an .src.rpm
 		spectool -R -g "${spec}"
-		rpmbuild -bs ${cleanup:- --clean --rmsource --rmspec} "${spec}"
-#		[ -n "${cleanup}" ] && rpmbuild --clean --rmsource --rmspec --nodeps "${spec}"
+		rpmbuild -bs "${spec}"
 		spec="$(rpm -E %{_srcrpmdir})/$(rpm -q --qf '%{name}-%{version}-%{release}\n' --specfile "${spec}" | head -n 1).src.rpm"
+#		[ -n "${cleanup}" ] && rpmbuild --clean --rmsource --rmspec --nodeps "${spec}"
 	;;
 	*)
 		echo "${1} is neither an .src.rpm nor a .spec file, aborting" >&2
@@ -132,7 +152,7 @@ else
 fi
 
 echo ${buildcommand} "${buildopts[@]}" "${spec}"
-${buildcommand} "${buildopts[@]}" "${spec}"
+${buildcommand} "${buildopts[@]}" "${spec}" > /dev/null 2>&1
 #unset resultdir
 #exit 0
 
