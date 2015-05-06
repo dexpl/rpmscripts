@@ -42,9 +42,9 @@ _check_dirs() {
 }
 
 
-_check_dirs / /usr && echo Fuck || echo Yep
-_check_dirs ~ '' && echo Fuck || echo Yep
-exit 0
+#_check_dirs / /usr && echo Fuck || echo Yep
+#_check_dirs ~ '' && echo Fuck || echo Yep
+#exit 0
 
 # -c remove sources and spec after building src.rpm
 # -l call rpmlint
@@ -68,7 +68,7 @@ do
 		;;
     M) unset baserepodir ;;
     r) chroot="$OPTARG" ;;
-		u) srcrpmurl="${1}"
+		u) srcrpmurl="$OPTARG" ;;
 		v) verbose=1 ;;
     \:)
       echo "Option -${OPTARG} requires an argument, aborting" >&2
@@ -90,7 +90,10 @@ if [ -n "${1}" ]; then
 elif [ -n "${srcrpmurl}" ]; then
 	srcrpmdir="$(rpm -E %_srcrpmdir)"
 	wget -cP "${srcrpmdir}" -t0 "${srcrpmurl}"
-	exec $(readlink -f "${0}") "$@" "${srcrpmdir}/$(basename "${url}")"
+# TODO fix reexec opts
+	reexecopts=""
+	[ -n "${chroot}" ] && reexecopts="${reexecopts} -r ${chroot}"
+	exec $(readlink -f "${0}") ${reexecopts} "${srcrpmdir}/$(basename "${srcrpmurl}")"
 else
 	echo "Error: no source specified" >&2
 	exit 1
@@ -161,11 +164,11 @@ ${buildcommand} "${buildopts[@]}" "${spec}" > /dev/null 2>&1
 _check_dirs "${resultdir}" && {
 
 	case "${targetname}" in
-		centos)
-			srcrpmdir_moveto="${baserepodir}/${targetname}/${targetver}/SRPMS"
+		centos | epel)
+			srcrpmdir_moveto="${baserepodir}/centos/${targetver}/SRPMS"
 # debuginfo rpm path
-			debugrpmdir_moveto="${baserepodir}/${targetname}/${targetver}/${targetarch}/debug"
-			rpmdir_moveto="${baserepodir}/${targetname}/${targetver}/${targetarch}"
+			debugrpmdir_moveto="${baserepodir}/centos/${targetver}/${targetarch}/debug"
+			rpmdir_moveto="${baserepodir}/centos/${targetver}/${targetarch}"
 		;;
 		fedora | rfremix)
 			srcrpmdir_moveto="${baserepodir}/fedora/${targetver}/source/SRPMS"
