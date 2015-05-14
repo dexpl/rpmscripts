@@ -18,17 +18,8 @@ set -e
 # Where to move result (s)rpms
 baserepodir=/srv/custom
 
-## Echo a warning if $1 is not a directory
-#_check_dir() {
-#	[ -d "${1}" ] || {
-#		echo "Warning: ${1} is not a directory, results (if any) won't be moved" >&2
-#		return 1
-#	}
-#}
-
 # Echo a warning if any of $@ is not a directory
 _check_dirs() {
-#	set +e
 	for dir in "${@}" ; do
 		[ -n "${verbose}" ] && echo "Checking dir '${dir}'" >&2
 # http://mywiki.wooledge.org/BashFAQ/105/Answers
@@ -43,13 +34,8 @@ _check_dirs() {
 	done
 	echo "returning 0" >&2
 	return 0
-#	set -e
 }
 
-
-#_check_dirs / /usr && echo Fuck || echo Yep
-#_check_dirs ~ '' && echo Fuck || echo Yep
-#exit 0
 
 # -c remove sources and spec after building src.rpm
 # -l call rpmlint
@@ -88,7 +74,8 @@ done
 
 shift $(($OPTIND - 1))
 
-[ -n "${verbose}" ] && set -x
+#[ -n "${verbose}" ] && set -x
+[ -n "${extra_verbose}" ] && set -x
 
 if [ -n "${1}" ]; then
 	spec="${1}"
@@ -135,11 +122,6 @@ else
 	fi
 fi
 
-#if [ -d "${baserepodir}" ]; then
-#	resultdir="$(mktemp -d)"
-#else
-#	echo "Warning: ${baserepodir} is not a directory, won't move result" >&2
-#fi
 _check_dirs "${baserepodir}" && resultdir="$(mktemp -d)"
 
 # Determine the build command
@@ -159,10 +141,7 @@ else
 	_check_dirs "${resultdir}" && buildcommand="${buildcommand} --resultdir=${resultdir}"
 fi
 
-echo ${buildcommand} "${buildopts[@]}" "${spec}"
 ${buildcommand} "${buildopts[@]}" "${spec}"
-#unset resultdir
-#exit 0
 
 # If nomove was not set there's no resultdir
 # If there was a fatal error while making resultdir, we never get to this point
