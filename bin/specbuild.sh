@@ -9,7 +9,7 @@
 #Т. е. все _предельно_просто_: mktemp'аем временный каталог, говорим, чтобы результаты шли в него, находим в нем .rpm'ки и раскладываем их как нужно (последнее _уже_ реализовано, осталось "намекнуть" про каталог). Единственный неочевидный момент — архитектура.
 
 _cleanup() {
-	[ -d "${resultdir}" ] && rm -r "${resultdir}"
+	[ -d "${resultdir}" ] && rm -r "${resultdir}" || :
 }
 
 trap _cleanup EXIT HUP INT QUIT ABRT
@@ -30,9 +30,14 @@ baserepodir=/srv/custom
 _check_dirs() {
 #	set +e
 	for dir in "${@}" ; do
-		echo "Checking dir '${dir}'" >&2
-		[ -d "${dir}" ] || {
-			echo "Warning: ${dir} is not a directory" >&2
+		[ -n "${verbose}" ] && echo "Checking dir '${dir}'" >&2
+# http://mywiki.wooledge.org/BashFAQ/105/Answers
+#		if [ ! -d "${dir}" ]; then 
+#			[ -n "${verbose}" ] && echo "Warning: ${dir} is not a directory" >&2
+#			return 1
+#		fi
+		[ -d "${dir}" ] || { 
+			[ -n "${verbose}" ] && echo "Warning: ${dir} is not a directory" >&2
 			return 1
 		}
 	done
@@ -155,7 +160,7 @@ else
 fi
 
 echo ${buildcommand} "${buildopts[@]}" "${spec}"
-${buildcommand} "${buildopts[@]}" "${spec}" > /dev/null 2>&1
+${buildcommand} "${buildopts[@]}" "${spec}"
 #unset resultdir
 #exit 0
 
@@ -191,3 +196,4 @@ _check_dirs "${resultdir}" && {
 			-o \( -name '*.rpm' -exec ${mv} "${rpmdir_moveto}" '{}' + \) && refreshcustomrepo
 	rm -r "${resultdir}"
 }
+[ -n "${verbose}" ] && echo "That's all, folks\!"
