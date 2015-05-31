@@ -44,7 +44,7 @@ _check_dirs() {
 # -r <chroot> use specified chroot
 # -u .src.rpm URL
 # -x extra options for rpmbuild/mock
-while getopts ":clLMr:u:v" Option
+while getopts ":clLMr:u:vx:" Option
 do
   case $Option in
     c)
