@@ -43,6 +43,7 @@ _check_dirs() {
 # -M do not move the results into repo dir
 # -r <chroot> use specified chroot
 # -u .src.rpm URL
+# -x extra options for rpmbuild/mock
 while getopts ":clLMr:u:v" Option
 do
   case $Option in
@@ -61,6 +62,7 @@ do
     r) chroot="$OPTARG" ;;
 		u) srcrpmurl="$OPTARG" ;;
 		v) verbose=1 ;;
+		x) extrabuildopts="$OPTARG" ;;
     \:)
       echo "Option -${OPTARG} requires an argument, aborting" >&2
       exit 1
@@ -141,7 +143,7 @@ else
 	_check_dirs "${resultdir}" && buildcommand="${buildcommand} --resultdir=${resultdir}"
 fi
 
-${buildcommand} "${buildopts[@]}" "${spec}"
+${buildcommand} "${buildopts[@]}" ${extrabuildopts} "${spec}"
 
 # If nomove was not set there's no resultdir
 # If there was a fatal error while making resultdir, we never get to this point
