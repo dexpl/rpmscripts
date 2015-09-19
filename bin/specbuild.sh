@@ -9,7 +9,7 @@
 #Т. е. все _предельно_просто_: mktemp'аем временный каталог, говорим, чтобы результаты шли в него, находим в нем .rpm'ки и раскладываем их как нужно (последнее _уже_ реализовано, осталось "намекнуть" про каталог). Единственный неочевидный момент — архитектура.
 
 _cleanup() {
-	[ -d "${resultdir}" ] && rm -r "${resultdir}" || :
+	[ -d "${resultdir}" ] && : # rm -r "${resultdir}" || :
 }
 
 trap _cleanup EXIT HUP INT QUIT ABRT
@@ -44,7 +44,7 @@ _check_dirs() {
 # -r <chroot> use specified chroot
 # -u .src.rpm URL
 # -x extra options for rpmbuild/mock
-while getopts ":clLMr:u:vx:" Option
+while getopts ":clLMr:sSu:vx:" Option
 do
   case $Option in
     c)
@@ -60,6 +60,8 @@ do
 		;;
     M) unset baserepodir ;;
     r) chroot="$OPTARG" ;;
+		s) target=spec ;;
+		S) target=srpm ;;
 		u) srcrpmurl="$OPTARG" ;;
 		v) verbose=1 ;;
 		x) extrabuildopts="$OPTARG" ;;
@@ -93,9 +95,11 @@ else
 	exit 1
 fi
 
-case "$(file -b --mime-type "${spec}")" in
-	application/x-rpm) : ;;
-	text/plain)
+[ -z "${target}" ] && target="$(file -b --mime-type "${spec}")"
+
+case "${target}" in
+	application/x-rpm|srpm) : ;;
+	text/plain|spec)
 # If $1 is a .spec file build an .src.rpm
 		spectool -R -g "${spec}"
 		rpmbuild -bs "${spec}"
@@ -144,6 +148,7 @@ else
 fi
 
 ${buildcommand} "${buildopts[@]}" ${extrabuildopts} "${spec}"
+buildresult=$?
 
 # If nomove was not set there's no resultdir
 # If there was a fatal error while making resultdir, we never get to this point
@@ -175,6 +180,6 @@ _check_dirs "${resultdir}" && {
 		find "${resultdir}" \( -name \*.src.rpm -exec ${mv} "${srcrpmdir_moveto}" '{}' + \) \
 			-o \( -name '*-debuginfo*.rpm' -exec ${mv} "${debugrpmdir_moveto}" '{}' + \) \
 			-o \( -name '*.rpm' -exec ${mv} "${rpmdir_moveto}" '{}' + \) && refreshcustomrepo
-	rm -r "${resultdir}"
+	[ ${buildresult} -eq 0 ] && rm -r "${resultdir}"
 }
 [ -n "${verbose}" ] && echo "That's all, folks\!"
