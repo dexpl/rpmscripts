@@ -32,7 +32,7 @@ _check_dirs() {
 			return 1
 		}
 	done
-	echo "returning 0" >&2
+#	echo "returning 0" >&2
 	return 0
 }
 
