@@ -15,4 +15,4 @@ usage() {
 
 rpm=${1}
 
-yumdownloader --source --urls "${rpm}" | wget -i - -O - -q | rpm2cpio | cpio -i --quiet --to-stdout "${rpm}.spec" | ${PAGER-less}
+yumdownloader --debuglevel 0 --source --urls "${rpm}" | wget -i - -O - -q | rpm2cpio | cpio -i --quiet --to-stdout "*.spec" | ${PAGER-less}
