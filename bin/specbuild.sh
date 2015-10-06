@@ -15,8 +15,11 @@ _cleanup() {
 trap _cleanup EXIT HUP INT QUIT ABRT
 set -e
 
-# Where to move result (s)rpms
-baserepodir=/srv/custom
+# Load config
+$myName="$(readlink -f "${0}")"
+$myDir="$(dirname "${myName}")"
+$confName=rpmscripts.conf
+[ -r "${myDir}../etc/${confName}" ] && . "${myDir}../etc/${confName}"
 
 # Echo a warning if any of $@ is not a directory
 _check_dirs() {
