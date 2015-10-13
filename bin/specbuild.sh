@@ -19,7 +19,7 @@ set -e
 myName="$(readlink -f "${0}")"
 myDir="$(dirname "${myName}")"
 confName=rpmscripts.conf
-[ -r "${myDir}../etc/${confName}" ] && . "${myDir}../etc/${confName}"
+[ -r "${myDir}/../etc/${confName}" ] && . "${myDir}../etc/${confName}"
 
 # Echo a warning if any of $@ is not a directory
 _check_dirs() {
