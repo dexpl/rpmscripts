@@ -1,0 +1,20 @@
+#!/bin/sh
+
+projectDir="${HOME}/projects"
+projectName=${1}
+
+[ -z "${projectName}" ] && {
+	echo Missing project name>&2
+	exit 1
+}
+
+set -e
+projectDir="${projectDir}/${projectName}"
+mkdir "${projectDir}"
+cd "${projectDir}"
+rpmdev-newspec -m "${projectName}"
+echo '.*.sw*' > .gitignore
+git init
+git add .
+git commit -m 'Initial commit'
+echo "Now you probably want to 'cd ${projectDir}'"
