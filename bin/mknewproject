@@ -2,6 +2,7 @@
 
 projectDir="${HOME}/projects"
 projectName=${1}
+existingSpec="$(rpm -E %{_specdir})/${projectName}.spec"
 
 [ -z "${projectName}" ] && {
 	echo Missing project name>&2
@@ -12,7 +13,12 @@ set -e
 projectDir="${projectDir}/${projectName}"
 mkdir "${projectDir}"
 cd "${projectDir}"
-rpmdev-newspec -m "${projectName}"
+if [ -r "${existingSpec}" ]; then
+	echo Warning, "${existingSpec}" already exists, using it>&2
+	cp "${existingSpec}" .
+else
+	rpmdev-newspec -m "${projectName}"
+fi
 echo '.*.sw*' > .gitignore
 git init
 git add .
