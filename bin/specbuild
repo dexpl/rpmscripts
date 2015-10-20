@@ -102,7 +102,7 @@ fi
 
 case "${target}" in
 	application/x-rpm|srpm) : ;;
-	text/plain|spec)
+	text/plain|text/x-makefile|spec)
 # If $1 is a .spec file build an .src.rpm
 		spectool -R -g "${spec}"
 		rpmbuild -bs "${spec}"
