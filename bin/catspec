@@ -8,11 +8,15 @@ usage() {
 	echo
 }
 
+get_url () {
+	[ "$(basename "${1}")" == "${1}" ] && yumdownloader --debuglevel 0 --source --urls "${1}" | wget -i - -O - -q || wget -O - -q "${1}"
+}
+
 [ $# -ne 1 ] && {
 	usage >&2
 	exit 1
 }
 
 rpm=${1}
-
-yumdownloader --debuglevel 0 --source --urls "${rpm}" | wget -i - -O - -q | rpm2cpio | cpio -i --quiet --to-stdout "*.spec" | ${PAGER-less}
+[ -f "${rpm}" ] && _cmd=cat || _cmd=get_url
+${_cmd} "${rpm}" | rpm2cpio | cpio -i --quiet --to-stdout '*.spec' | ${PAGER-less}
