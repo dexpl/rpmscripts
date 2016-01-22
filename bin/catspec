@@ -9,7 +9,11 @@ usage() {
 }
 
 get_url () {
-	[ "$(basename "${1}")" == "${1}" ] && yumdownloader --debuglevel 0 --source --urls "${1}" | wget -i - -O - -q || wget -O - -q "${1}"
+	[ "$(basename "${1}")" == "${1}" ] && yumdownloader --debuglevel 0 --source --urls "${1}" || echo "${1}"
+}
+
+get_remote () {
+	get_url "${1}"	| wget -i - -O - -q
 }
 
 [ $# -ne 1 ] && {
@@ -18,5 +22,5 @@ get_url () {
 }
 
 rpm=${1}
-[ -f "${rpm}" ] && _cmd=cat || _cmd=get_url
-${_cmd} "${rpm}" | rpm2cpio | cpio -i --quiet --to-stdout '*.spec' | ${PAGER-less}
+[ -f "${rpm}" ] && cat_cmd=cat || cat_cmd=get_remote
+${cat_cmd} "${rpm}" | rpm2cpio | cpio -i --quiet --to-stdout '*.spec' | ${PAGER-less}
