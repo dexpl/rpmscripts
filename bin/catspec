@@ -1,15 +1,18 @@
 #!/bin/sh
 
+# Include shared functions
+# @todo: Makefile?
+myName="$(readlink -f "${0}")"
+myDir="$(dirname "${myName}")"
+
+[ -r "${myDir}/../lib/rpmscripts_functions" ] && . "${myDir}/../lib/rpmscripts_functions"
+
 usage() {
 	local myName=$(basename "${0}")
 	echo ${myName}: echo to STDOUT a .spec of a given rpm package
 	echo
 	echo Usage: ${myName} rpm
 	echo
-}
-
-get_url () {
-	[ "$(basename "${1}")" == "${1}" ] && yumdownloader --debuglevel 0 --source --urls "${1}" || echo "${1}"
 }
 
 get_remote () {

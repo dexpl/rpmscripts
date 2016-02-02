@@ -7,6 +7,12 @@ mockconfdir=/etc/mock
 mockdefaultchroot=${mockconfdir}/default.cfg
 read srcrpmdir sourcedir specdir rpmdir <<< $(rpm -E %_srcrpmdir -E %_sourcedir -E %_specdir -E %_rpmdir)
 
+# Get .src.rpm url for given rpm name
+# @note: due to yumdownloader limitation some garbage also gets
+get_url () {
+	[ "$(basename "${1}")" == "${1}" ] && yumdownloader --debuglevel 0 --source --urls "${1}" || echo "${1}"
+}
+
 # Display usage information and exits if $1 is set
 usage () {
 	(sed '/^#/d;s/_/\t/g' | fold -s | less -F) <<_EOF
