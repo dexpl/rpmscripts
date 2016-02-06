@@ -20,6 +20,7 @@ myName="$(readlink -f "${0}")"
 myDir="$(dirname "${myName}")"
 confName=rpmscripts.conf
 [ -r "${myDir}/../etc/${confName}" ] && . "${myDir}/../etc/${confName}"
+[ -r "${myDir}/../lib/rpmscripts_functions" ] && . "${myDir}/../lib/rpmscripts_functions"
 
 # Echo a warning if any of $@ is not a directory
 _check_dirs() {
@@ -45,9 +46,10 @@ _check_dirs() {
 # -L work "locally", don't involve mock at all
 # -M do not move the results into repo dir
 # -r <chroot> use specified chroot
-# -u .src.rpm URL
+# -u .src.rpm URL (or name, in which case it's searched in currently enabled repos)
+# -U just download .src.rpm (only meaningful with -u)
 # -x extra options for rpmbuild/mock
-while getopts ":clLMr:sSu:vx:" Option
+while getopts ":clLMr:sSu:Uvx:" Option
 do
   case $Option in
     c)
@@ -66,6 +68,7 @@ do
 		s) target=spec ;;
 		S) target=srpm ;;
 		u) srcrpmurl="$OPTARG" ;;
+		U) justdl=1 ;;
 		v) verbose=1 ;;
 		x) extrabuildopts="$OPTARG" ;;
     \:)
@@ -88,7 +91,11 @@ if [ -n "${1}" ]; then
 	spec="${1}"
 elif [ -n "${srcrpmurl}" ]; then
 	srcrpmdir="$(rpm -E %_srcrpmdir)"
-	wget -cP "${srcrpmdir}" -t0 "${srcrpmurl}"
+	get_url "${srcrpmurl}" | wget -ci- -P "${srcrpmdir}" -t0
+	[ -n "${justdl}" ] && {
+		echo '-U option in effect, just downloaded the requested .src.rpm'
+		exit
+	}
 # TODO fix reexec opts
 	reexecopts=""
 	[ -n "${chroot}" ] && reexecopts="${reexecopts} -r ${chroot}"
