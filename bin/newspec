@@ -1,0 +1,15 @@
+#!/bin/bash
+
+projectName=$1
+
+[ -n "${projectName}" ] || {
+	echo Usage: $(basename $0) projectName>&2
+	exit 1
+}
+
+fileName="$(rpm -E %_specdir)/${projectName}.spec"
+
+set -e
+
+[ -f "${fileName}" ] || rpmdev-newspec -m -o "${fileName}"
+[ -n "${DISPLAY}" ] && gvim --servername "${projectName}" --remote-tab-silent "${fileName}"
