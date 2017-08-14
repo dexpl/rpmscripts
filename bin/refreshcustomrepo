@@ -1,14 +1,15 @@
 #!/bin/sh
 
-#declare -r repodir=/srv/custom/fedora
-declare -r repodir=/srv/custom
-#declare -r createrepocmd="createrepo_c --update -d --deltas -v ."
-#declare -r createrepocmd="createrepo_c --update -d --deltas -q ."
-#declare -r createrepocmd="createrepo_c --update -d -q ."
 declare -r createrepocmd="createrepo_c --update -d -q ."
+
+# Load config
+myName="$(readlink -f "${0}")"
+myDir="$(dirname "${myName}")"
+confName=rpmscripts.conf
+[ -r "${myDir}/../etc/${confName}" ] && . "${myDir}/../etc/${confName}"
 
 [ $# -gt 0 ] && releasever=$1
 [ -z ${releasever} ] && releasever=$(rpm -q --qf '%{version}' $(rpm -qf /etc/*-release | sort -u))
 
 #find ${repodir}/${releasever} -name repodata -type d -execdir ${createrepocmd} \;
-find ${repodir} -name repodata -type d -execdir ${createrepocmd} \;
+find ${baserepodir} -name repodata -type d -execdir ${createrepocmd} \;
