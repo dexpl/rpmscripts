@@ -3,7 +3,8 @@
 set -x
 
 specFile="${1:?No spec file given}"
-projectName="${2:-$(rpm -q --qf '%{name}' --specfile "${1}" | head -n 1)}"
-srpmName="$(rpm -E %_srcrpmdir)/$(rpm -q --qf '%{name}-%{version}-%{release}\n' --specfile "${1}" | head -n 1).src.rpm"
+projectName="${2:-$(rpm -q --qf '%{name}\n' --specfile "${specFile}" | head -n 1)}"
+srpmName="$(rpm -E %_srcrpmdir)/$(rpm -q --qf '%{nevr}\n' --specfile "${specFile}" | head -n 1).src.rpm"
 
+spectool -g -R "${specFile}"
 rpmbuild -bs "${specFile}" && copr build "${projectName}" "${srpmName}"
