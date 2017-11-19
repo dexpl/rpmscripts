@@ -2,9 +2,26 @@
 
 set -x
 
+_buildcopr () {
+	copr build "${projectName}" "${srpmName}"
+}
+
+while getopts ":bp:" opt
+do
+	case ${opt} in
+		b) action=buildcopr ;;
+		p) projectName=${OPTARG} ;;
+		\:) echo "-${OPTARG} requires an argument">&2 ; exit 1 ;;
+		*) echo "-${OPTARG}: unknown option">&2 ; exit 1 ;;
+	esac
+done
+
+shift $((${OPTIND} - 1))
+
 specFile="${1:?No spec file given}"
-projectName="${2:-$(rpm -q --qf '%{name}\n' --specfile "${specFile}" | head -n 1)}"
+projectName="${projectName:-$(rpm -q --qf '%{name}\n' --specfile "${specFile}" | head -n 1)}"
 srpmName="$(rpm -E %_srcrpmdir)/$(rpm -q --qf '%{nevr}\n' --specfile "${specFile}" | head -n 1).src.rpm"
 
 spectool -g -R "${specFile}"
-rpmbuild -bs "${specFile}" && copr build "${projectName}" "${srpmName}"
+rpmbuild -bs "${specFile}"
+[ -n "${action}" ] && _${action}
