@@ -6,10 +6,15 @@ _buildcopr () {
 	copr build "${projectName}" "${srpmName}"
 }
 
-while getopts ":bp:" opt
+_localbuild () {
+	rpmbuild -bb "${specFile}"
+}
+
+while getopts ":blp:" opt
 do
 	case ${opt} in
 		b) action=buildcopr ;;
+		l) action=localbuild ;;
 		p) projectName=${OPTARG} ;;
 		\:) echo "-${OPTARG} requires an argument">&2 ; exit 1 ;;
 		*) echo "-${OPTARG}: unknown option">&2 ; exit 1 ;;
@@ -19,6 +24,8 @@ done
 shift $((${OPTIND} - 1))
 
 specFile="${1:?No spec file given}"
+[ -f "${specFile}" ] || specFile="$(rpm -E %_specdir)/${specFile}"
+[ -f "${specFile}" ] || specFile="${specFile}.spec"
 projectName="${projectName:-$(rpm -q --qf '%{name}\n' --specfile "${specFile}" | head -n 1)}"
 srpmName="$(rpm -E %_srcrpmdir)/$(rpm -q --qf '%{nevr}\n' --specfile "${specFile}" | head -n 1).src.rpm"
 
