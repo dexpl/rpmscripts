@@ -11,7 +11,7 @@ read srcrpmdir sourcedir specdir rpmdir <<< $(rpm -E %_srcrpmdir -E %_sourcedir 
 # @note: due to yumdownloader limitation some garbage also gets
 get_url () {
 	yumdownloader=yumdownloader
-	which dnf > /dev/null && yumdownloader="dnf download"
+	which dnf > /dev/null && yumdownloader="dnf download --urlprotocol http --urlprotocol https --urlprotocol ftp"
 	[ "$(basename "${1}")" == "${1}" ] && ${yumdownloader} --debuglevel 0 --source --urls "${1}" || echo "${1}"
 }
 
