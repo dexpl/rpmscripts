@@ -31,4 +31,4 @@ srpmName="$(rpm -E %_srcrpmdir)/$(rpm -q --qf '%{nevr}\n' --specfile "${specFile
 
 spectool -g -R "${specFile}"
 rpmbuild -bs "${specFile}"
-[ -n "${action}" ] || : && _${action}
+[ -n "${action}" ] || exit && _${action}
