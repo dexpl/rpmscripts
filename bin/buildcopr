@@ -3,6 +3,7 @@
 set -x
 
 _buildcopr () {
+	[ "${renew}" == "yes" ] && copr delete-package "${projectName}" --name "${pkgName}"
 	copr build "${projectName}" "${srpmName}"
 }
 
@@ -10,12 +11,13 @@ _localbuild () {
 	rpmbuild -bb "${specFile}"
 }
 
-while getopts ":blp:" opt
+while getopts ":blp:r" opt
 do
 	case ${opt} in
 		b) action=buildcopr ;;
 		l) action=localbuild ;;
 		p) projectName=${OPTARG} ;;
+		r) renew=yes ;;
 		\:) echo "-${OPTARG} requires an argument">&2 ; exit 1 ;;
 		*) echo "-${OPTARG}: unknown option">&2 ; exit 1 ;;
 	esac
@@ -26,7 +28,8 @@ shift $((${OPTIND} - 1))
 specFile="${1:?No spec file given}"
 [ -f "${specFile}" ] || specFile="$(rpm -E %_specdir)/${specFile}"
 [ -f "${specFile}" ] || specFile="${specFile}.spec"
-projectName="${projectName:-$(rpm -q --qf '%{name}\n' --specfile "${specFile}" | head -n 1)}"
+pkgName="$(rpm -q --qf '%{name}\n' --specfile "${specFile}" | head -n 1)"
+projectName="${projectName:-${pkgName}}"
 srpmName="$(rpm -E %_srcrpmdir)/$(rpm -q --qf '%{nevr}\n' --specfile "${specFile}" | head -n 1).src.rpm"
 
 spectool -g -R "${specFile}"
