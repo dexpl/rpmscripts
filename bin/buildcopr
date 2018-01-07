@@ -1,23 +1,52 @@
 #!/bin/bash
 
-set -x
+__findspec () {
+	[ -f "${specFile}" ] || specFile="$(rpm -E %_specdir)/${specFile}"
+	[ -f "${specFile}" ] || specFile="${specFile}.spec"
+	pkgName="$(rpm -q --qf '%{name}\n' --specfile "${specFile}" | head -n 1)"
+	projectName="${projectName:-${pkgName}}"
+	srpmName="$(rpm -E %_srcrpmdir)/$(rpm -q --qf '%{nevr}\n' --specfile "${specFile}" | head -n 1).src.rpm"
+}
+
+# @param 1 string A package name to find the source url of
+__findurl () {
+	yumdownloader=yumdownloader
+	which dnf > /dev/null 2>&1 && yumdownloader="dnf download --urlprotocol http --urlprotocol https --urlprotocol ftp"
+	ydOpts="--debuglevel 0 --source --urls"
+	[ -n "${releaseVer}" ] && ydOpts="${ydOpts} --releasever ${releaseVer}"
+	# If a package name is given, try to find its source url, otherwise just echo what's given assuming it's an url to .src.rpm already
+	[ "$(basename "${1}")" == "${1}" ] && ${yumdownloader} ${ydOpts} "${1}" || echo "${1}"
+}
 
 _buildcopr () {
+	[ "${findurl}" == "yes" ] && { renew=no ; srpmName=$(__findurl "${specFile}") ; } || __findspec
 	[ "${renew}" == "yes" ] && copr delete-package "${projectName}" --name "${pkgName}"
-	copr build "${projectName}" "${srpmName}"
+	${dryRun} copr build "${projectName}" "${srpmName}"
+}
+
+_buildsrpm () {
+	__findspec
+	spectool -g -R "${specFile}"
+	rpmbuild -bs "${specFile}"
 }
 
 _localbuild () {
+	__findspec
 	rpmbuild -bb "${specFile}"
 }
 
-while getopts ":blp:r" opt
+action=buildsrpm
+while getopts ":bdlp:ruv:wx" opt
 do
 	case ${opt} in
 		b) action=buildcopr ;;
+		d) dryRun=echo ;;
 		l) action=localbuild ;;
 		p) projectName=${OPTARG} ;;
 		r) renew=yes ;;
+		u) action=buildcopr ; findurl=yes ;;
+		v|w) action=buildcopr ; projectName=wannabe-epel ; [ "${opt}" == "v" ] && releaseVer=${OPTARG} ;;
+		x) set -x ;;
 		\:) echo "-${OPTARG} requires an argument">&2 ; exit 1 ;;
 		*) echo "-${OPTARG}: unknown option">&2 ; exit 1 ;;
 	esac
@@ -26,12 +55,5 @@ done
 shift $((${OPTIND} - 1))
 
 specFile="${1:?No spec file given}"
-[ -f "${specFile}" ] || specFile="$(rpm -E %_specdir)/${specFile}"
-[ -f "${specFile}" ] || specFile="${specFile}.spec"
-pkgName="$(rpm -q --qf '%{name}\n' --specfile "${specFile}" | head -n 1)"
-projectName="${projectName:-${pkgName}}"
-srpmName="$(rpm -E %_srcrpmdir)/$(rpm -q --qf '%{nevr}\n' --specfile "${specFile}" | head -n 1).src.rpm"
 
-spectool -g -R "${specFile}"
-rpmbuild -bs "${specFile}"
 [ -n "${action}" ] || exit 0 && _${action}
