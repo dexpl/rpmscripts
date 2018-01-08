@@ -22,7 +22,7 @@ _buildcopr () {
 		renew=no
 		srpmName=$(__findurl "${specFile}")
 	} || {
-		__findspec
+		__buildsrpm
 		pkgName="$(rpm -q --qf '%{name}\n' --specfile "${specFile}" | head -n 1)"
 		projectName="${projectName:-${pkgName}}"
 		srpmName="$(rpm -E %_srcrpmdir)/$(rpm -q --qf '%{nevr}\n' --specfile "${specFile}" | head -n 1).src.rpm"
