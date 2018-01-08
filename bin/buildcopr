@@ -3,9 +3,6 @@
 __findspec () {
 	[ -f "${specFile}" ] || specFile="$(rpm -E %_specdir)/${specFile}"
 	[ -f "${specFile}" ] || specFile="${specFile}.spec"
-	pkgName="$(rpm -q --qf '%{name}\n' --specfile "${specFile}" | head -n 1)"
-	projectName="${projectName:-${pkgName}}"
-	srpmName="$(rpm -E %_srcrpmdir)/$(rpm -q --qf '%{nevr}\n' --specfile "${specFile}" | head -n 1).src.rpm"
 }
 
 # @param 1 string A package name to find the source url of
@@ -21,7 +18,15 @@ __findurl () {
 }
 
 _buildcopr () {
-	[ "${findurl}" == "yes" ] && { renew=no ; srpmName=$(__findurl "${specFile}") ; } || __findspec
+	[ "${findurl}" == "yes" ] && {
+		renew=no
+		srpmName=$(__findurl "${specFile}")
+	} || {
+		__findspec
+		pkgName="$(rpm -q --qf '%{name}\n' --specfile "${specFile}" | head -n 1)"
+		projectName="${projectName:-${pkgName}}"
+		srpmName="$(rpm -E %_srcrpmdir)/$(rpm -q --qf '%{nevr}\n' --specfile "${specFile}" | head -n 1).src.rpm"
+	}
 	[ "${renew}" == "yes" ] && copr delete-package "${projectName}" --name "${pkgName}"
 	${dryRun} copr build "${projectName}" "${srpmName}"
 }
