@@ -13,7 +13,9 @@ __findurl () {
 	yumdownloader=yumdownloader
 	which dnf > /dev/null 2>&1 && yumdownloader="dnf download --urlprotocol http --urlprotocol https --urlprotocol ftp"
 	ydOpts="--debuglevel 0 --source --urls"
-	[ -n "${releaseVer}" ] && ydOpts="${ydOpts} --releasever ${releaseVer}"
+	[ "${rawhide}" == "yes" ] && ydOpts="${ydOpts} --enablerepo rawhide" || {
+		[ -n "${releaseVer}" ] && ydOpts="${ydOpts} --releasever ${releaseVer}"
+	}
 	# If a package name is given, try to find its source url, otherwise just echo what's given assuming it's an url to .src.rpm already
 	[ "$(basename "${1}")" == "${1}" ] && ${yumdownloader} ${ydOpts} "${1}" || echo "${1}"
 }
@@ -35,19 +37,34 @@ _localbuild () {
 	rpmbuild -bb "${specFile}"
 }
 
+_getsrpm () {
+	__findurl | wget -P $(rpm -E %_srpmdir)
+}
+
 action=buildsrpm
-while getopts ":bdlp:ruv:wx" opt
+while getopts ":bdlnp:Rruw:x" opt
 do
 	case ${opt} in
 		b) action=buildcopr ;;
-		d) dryRun=echo ;;
+		d) action=getsrpm ;;
 		l) action=localbuild ;;
+		n) dryRun=echo ;;
 		p) projectName=${OPTARG} ;;
+		R) rawhide=yes ;;
 		r) renew=yes ;;
 		u) action=buildcopr ; findurl=yes ;;
-		v|w) action=buildcopr ; projectName=wannabe-epel ; [ "${opt}" == "v" ] && releaseVer=${OPTARG} ;;
 		x) set -x ;;
-		\:) echo "-${OPTARG} requires an argument">&2 ; exit 1 ;;
+		w|\:)
+			[ "${opt}" == "w" ] && {
+				action=buildcopr
+				projectName=wannabe-epel
+				releaseVer=${OPTARG//-/}
+			} || {
+				[ "${OPTARG}" == "w" ] || {
+					echo "-${OPTARG} requires an argument">&2
+					exit 1
+				}
+			} ;;
 		*) echo "-${OPTARG}: unknown option">&2 ; exit 1 ;;
 	esac
 done
