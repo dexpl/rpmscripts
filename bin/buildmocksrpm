@@ -1,0 +1,45 @@
+#!/bin/bash
+
+# Just builds srpm package within mock chroot from .spec file given
+
+while getopts ":Lr:" Option ; do
+	case $Option in
+	L) localbuild=1 ;;
+	r) chroot="$OPTARG" ;;
+	\:)
+		echo "Option -${OPTARG} requires an argument, aborting" >&2
+		exit 1
+	;;
+	*)
+		echo "Unknown option -${OPTARG}, aborting" >&2
+		exit 1
+	;;
+	esac
+done
+
+shift $(($OPTIND - 1))
+
+set -e
+
+spec=$1
+
+rpmname=$(rpmspec -q --queryformat '%{name}' --srpm "${spec}")
+read srcrpmdir sourcedir <<< $(rpm -E %_srcrpmdir -E %_sourcedir)
+
+if [ -n "${localbuild}" ]; then
+	echo "Warning: doing local build, any chroot set via command line are ignored" >&2
+	echo "Warning: doing local build, won't move results" >&2
+	buildcommand="rpmbuild -bs ${spec}"
+else
+	[ -z "${chroot}" ] && chroot=default
+	mockdir="/var/lib/mock/$(basename $(readlink -f /etc/mock/${chroot}.cfg ) .cfg)/result"
+	buildcommand="mock -r ${chroot} --buildsrpm --sources=${sourcedir} --spec=${spec}"
+fi
+
+# Download all the sources/patches if they're missing
+spectool -g -R "${spec}"
+# ...build srpm (TODO check if done already)
+#mock --buildsrpm --sources="${sourcedir}" --spec="${spec}"
+${buildcommand}
+# ...and move it into %_srcrpmdir
+[ -d "${mockdir}" ] && find "${mockdir}" -name "${rpmname}"'*'.src.rpm -type f -exec mv -vt "${srcrpmdir}" '{}' +

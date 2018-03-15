@@ -1,45 +1,77 @@
 #!/bin/bash
 
-# Just builds srpm package within mock chroot from .spec file given
+__findspec () {
+	[ -f "${specFile}" ] || specFile="${specFile}.spec"
+	[ -f "${specFile}" ] || specFile="$(rpm -E %_specdir)/${specFile}"
+}
 
-while getopts ":Lr:" Option ; do
-	case $Option in
-	L) localbuild=1 ;;
-	r) chroot="$OPTARG" ;;
-	\:)
-		echo "Option -${OPTARG} requires an argument, aborting" >&2
-		exit 1
-	;;
-	*)
-		echo "Unknown option -${OPTARG}, aborting" >&2
-		exit 1
-	;;
+# @param 1 string A package name to find the source url of
+__findurl () {
+	yumdownloader=yumdownloader
+	which dnf > /dev/null 2>&1 && yumdownloader="dnf download --urlprotocol http --urlprotocol https --urlprotocol ftp"
+	ydOpts="--debuglevel 0 --source --urls"
+	[ "${rawhide}" == "yes" ] && ydOpts="${ydOpts} --enablerepo rawhide" || {
+		[ -n "${releaseVer}" ] && ydOpts="${ydOpts} --releasever ${releaseVer}"
+	}
+	# If a package name is given, try to find its source url, otherwise just echo what's given assuming it's an url to .src.rpm already
+	[ "$(basename "${1}")" == "${1}" ] && ${yumdownloader} ${ydOpts} "${1}" || echo "${1}"
+}
+
+_buildcopr () {
+	[ "${findurl}" == "yes" ] && {
+		renew=no
+		srpmName=$(__findurl "${specFile}")
+	} || {
+		_buildsrpm
+		pkgName="$(rpm -q --qf '%{name}\n' --specfile "${specFile}" | head -n 1)"
+		projectName="${projectName:-${pkgName}}"
+		srpmName="$(rpm -E %_srcrpmdir)/$(rpm -q --qf '%{nevr}\n' --specfile "${specFile}" | head -n 1).src.rpm"
+		# Crappy crutch
+		[ -f "${srpmName}" ] || srpmName="$(rpm -E %_srcrpmdir)/$(rpm -q --qf '%{nvr}\n' --specfile "${specFile}" | head -n 1).src.rpm"
+	}
+	[ "${renew}" == "yes" ] && copr delete-package "${projectName}" --name "${pkgName}"
+	${dryRun} copr build "${projectName}" "${srpmName}"
+}
+
+_buildsrpm () {
+	__findspec
+	spectool -g -R "${specFile}"
+	rpmbuild -bs "${specFile}"
+}
+
+_localbuild () {
+	_buildsrpm
+	rpmbuild -bb "${specFile}"
+}
+
+_getsrpm () {
+	__findurl "${specFile}" | wget -i - -P $(rpm -E %_srcrpmdir)
+}
+
+action=$(basename "${0}")
+while getopts ":np:Rruw:x" opt
+do
+	case ${opt} in
+		n) dryRun=echo ;;
+		p) projectName=${OPTARG} ;;
+		R) rawhide=yes ;;
+		r) renew=yes ;;
+		u) findurl=yes ;;
+		x) set -x ;;
+		w|\:)
+			[ "${opt}" == "w" ] && {
+				projectName=wannabe-epel
+				releaseVer=${OPTARG//-/}
+			} || {
+				[ "${OPTARG}" == "w" ] || {
+					echo "-${OPTARG} requires an argument">&2
+					exit 1
+				}
+			} ;;
+		*) echo "-${OPTARG}: unknown option">&2 ; exit 1 ;;
 	esac
 done
 
-shift $(($OPTIND - 1))
+shift $((${OPTIND} - 1))
 
-set -e
-
-spec=$1
-
-rpmname=$(rpmspec -q --queryformat '%{name}' --srpm "${spec}")
-read srcrpmdir sourcedir <<< $(rpm -E %_srcrpmdir -E %_sourcedir)
-
-if [ -n "${localbuild}" ]; then
-	echo "Warning: doing local build, any chroot set via command line are ignored" >&2
-	echo "Warning: doing local build, won't move results" >&2
-	buildcommand="rpmbuild -bs ${spec}"
-else
-	[ -z "${chroot}" ] && chroot=default
-	mockdir="/var/lib/mock/$(basename $(readlink -f /etc/mock/${chroot}.cfg ) .cfg)/result"
-	buildcommand="mock -r ${chroot} --buildsrpm --sources=${sourcedir} --spec=${spec}"
-fi
-
-# Download all the sources/patches if they're missing
-spectool -g -R "${spec}"
-# ...build srpm (TODO check if done already)
-#mock --buildsrpm --sources="${sourcedir}" --spec="${spec}"
-${buildcommand}
-# ...and move it into %_srcrpmdir
-[ -d "${mockdir}" ] && find "${mockdir}" -name "${rpmname}"'*'.src.rpm -type f -exec mv -vt "${srcrpmdir}" '{}' +
+for specFile in $* ; do _${action} ; done
