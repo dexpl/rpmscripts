@@ -17,6 +17,10 @@ __findurl () {
 	[ "$(basename "${1}")" == "${1}" ] && ${yumdownloader} ${ydOpts} "${1}" || echo "${1}"
 }
 
+__lint () {
+	rpmlint -i ${specFile} || exit $?
+}
+
 _buildcopr () {
 	[ "${findurl}" == "yes" ] && {
 		renew=no
@@ -29,8 +33,15 @@ _buildcopr () {
 		# Crappy crutch
 		[ -f "${srpmName}" ] || srpmName="$(rpm -E %_srcrpmdir)/$(rpm -q --qf '%{nvr}\n' --specfile "${specFile}" | head -n 1).src.rpm"
 	}
+	[ -z "${nolint}" ] && __lint
+	[ -n "${mockFirst}" ] && { _buildmock || exit $?; }
 	[ "${renew}" == "yes" ] && copr delete-package "${projectName}" --name "${pkgName}"
 	${dryRun} copr build "${projectName}" "${srpmName}"
+}
+
+# TODO specify chroot(s) to build into
+_buildmock () {
+	mock "${srpmName}"
 }
 
 _buildsrpm () {
@@ -39,19 +50,26 @@ _buildsrpm () {
 	rpmbuild -bs "${specFile}"
 }
 
+_getsrpm () {
+	__findurl "${specFile}" | wget -i - -P $(rpm -E %_srcrpmdir)
+}
+
 _localbuild () {
 	_buildsrpm
 	rpmbuild -bb "${specFile}"
 }
 
-_getsrpm () {
-	__findurl "${specFile}" | wget -i - -P $(rpm -E %_srcrpmdir)
+action=_$(basename "${0}")
+[ "$(type -t "${action}")" = "function" ] || {
+	echo "${action}: unknown action">&2
+	exit 1
 }
 
-action=$(basename "${0}")
-while getopts ":np:Rruw:x" opt
+while getopts ":Lmnp:Rruw:x" opt
 do
 	case ${opt} in
+		L) nolint=yes ;;
+		m) mockFirst=yes ;;
 		n) dryRun=echo ;;
 		p) projectName=${OPTARG} ;;
 		R) rawhide=yes ;;
@@ -74,4 +92,4 @@ done
 
 shift $((${OPTIND} - 1))
 
-for specFile in $* ; do _${action} ; done
+for specFile in $* ; do ${action} ; done
