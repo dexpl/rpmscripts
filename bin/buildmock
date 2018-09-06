@@ -7,14 +7,16 @@ __findspec () {
 
 # @param 1 string A package name to find the source url of
 __findurl () {
-	yumdownloader=yumdownloader
-	which dnf > /dev/null 2>&1 && yumdownloader="dnf download --urlprotocol http --urlprotocol https --urlprotocol ftp"
-	ydOpts="--debuglevel 0 --source --urls"
-	[ "${rawhide}" == "yes" ] && ydOpts="${ydOpts} --enablerepo rawhide" || {
-		[ -n "${releaseVer}" ] && ydOpts="${ydOpts} --releasever ${releaseVer}"
-	}
 	# If a package name is given, try to find its source url, otherwise just echo what's given assuming it's an url to .src.rpm already
-	[ "$(basename "${1}")" == "${1}" ] && ${yumdownloader} ${ydOpts} "${1}" || echo "${1}"
+	[ "$(basename "${1}")" == "${1}" ] && {
+		yumdownloader=yumdownloader
+			which dnf > /dev/null 2>&1 && yumdownloader="dnf download --urlprotocol http --urlprotocol https --urlprotocol ftp"
+			ydOpts="--debuglevel 0 --source --urls"
+			[ "${rawhide}" == "yes" ] && ydOpts="${ydOpts} --enablerepo rawhide" || {
+				[ -n "${releaseVer}" ] && ydOpts="${ydOpts} --releasever ${releaseVer}"
+			}
+		${yumdownloader} ${ydOpts} "${1}"
+	} || echo "${1}"
 }
 
 __lint () {
@@ -23,21 +25,27 @@ __lint () {
 
 _buildcopr () {
 	[ "${findurl}" == "yes" ] && {
-		renew=no
-		srpmName=$(__findurl "${specFile}")
-	} || {
-		_buildsrpm
-		pkgName="$(rpm -q --qf '%{name}\n' --specfile "${specFile}" | head -n 1)"
-		projectName="${projectName:-${pkgName}}"
-		srpmName="$(rpm -E %_srcrpmdir)/$(rpm -q --qf '%{nevr}\n' --specfile "${specFile}" | head -n 1).src.rpm"
-		# Crappy crutch
-		[ -f "${srpmName}" ] || srpmName="$(rpm -E %_srcrpmdir)/$(rpm -q --qf '%{nvr}\n' --specfile "${specFile}" | head -n 1).src.rpm"
-	}
-	[ -z "${nolint}" ] && __lint
-	[ -n "${mockFirst}" ] && { _buildmock || exit $?; }
-	[ "${renew}" == "yes" ] && copr delete-package "${projectName}" --name "${pkgName}"
-	${dryRun} copr build "${projectName}" "${srpmName}"
-}
+		nolint=yes
+			renew=no
+			srpmName=$(__findurl "${specFile}")
+		} || {
+			[ "$(file -b --mime-type "${specFile}")" == "application/x-rpm" ] && {
+			srpmName="${specFile}"
+					nolint=yes
+				} || {
+					_buildsrpm
+									srpmName="$(rpm -E %_srcrpmdir)/$(rpm -q --qf '%{nevr}\n' --specfile "${specFile}" | head -n 1).src.rpm"
+									# Crappy crutch
+									[ -f "${srpmName}" ] || srpmName="$(rpm -E %_srcrpmdir)/$(rpm -q --qf '%{nvr}\n' --specfile "${specFile}" | head -n 1).src.rpm"
+								}
+						}
+					pkgName="$(rpm -q --qf '%{name}\n' "${srpmName}" | head -n 1)"
+					projectName="${projectName:-${pkgName}}"
+					[ -z "${nolint}" ] && __lint
+					[ -n "${mockFirst}" ] && { _buildmock || exit $?; }
+					[ "${renew}" == "yes" ] && copr delete-package "${projectName}" --name "${pkgName}"
+					${dryRun} copr build "${projectName}" "${srpmName}"
+				}
 
 # TODO specify chroot(s) to build into
 _buildmock () {
@@ -79,17 +87,17 @@ do
 		w|\:)
 			[ "${opt}" == "w" ] && {
 				projectName=wannabe-epel
-				releaseVer=${OPTARG//-/}
-			} || {
-				[ "${OPTARG}" == "w" ] || {
-					echo "-${OPTARG} requires an argument">&2
-					exit 1
-				}
-			} ;;
-		*) echo "-${OPTARG}: unknown option">&2 ; exit 1 ;;
-	esac
-done
+							releaseVer=${OPTARG//-/}
+						} || {
+							[ "${OPTARG}" == "w" ] || {
+							echo "-${OPTARG} requires an argument">&2
+													exit 1
+												}
+										} ;;
+								*) echo "-${OPTARG}: unknown option">&2 ; exit 1 ;;
+							esac
+						done
 
-shift $((${OPTIND} - 1))
+						shift $((${OPTIND} - 1))
 
-for specFile in $* ; do ${action} ; done
+						for specFile in $* ; do ${action} ; done
