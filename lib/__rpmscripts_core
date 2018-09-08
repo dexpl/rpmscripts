@@ -1,5 +1,9 @@
 #!/bin/bash
 
+# List given project's chroots:
+# curl -s copr.fedorainfracloud.org//api_2/projects/$(curl -s copr.fedorainfracloud.org/api_2/projects?owner=dexpl'&name=misc' | jq '.projects[].project.id')/chroots | jq -r '.chroots[].chroot.name'
+# (find a project id by its owner and name, then list chroots for that id)
+
 __findspec () {
   [ -f "${specFile}" ] || specFile="${specFile}.spec"
   [ -f "${specFile}" ] || specFile="$(rpm -E %_specdir)/${specFile}"
