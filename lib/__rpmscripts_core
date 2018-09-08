@@ -33,6 +33,8 @@ _buildcopr () {
     renew=no
     srpmName=$(__findurl "${specFile}")
     } || {
+# specFile can actually be an URL to .src.rpm
+# if it is, just pass it to COPR
     [ "$(file -b --mime-type "${specFile}")" == "application/x-rpm" ] && {
       srpmName="${specFile}"
       nolint=yes
@@ -53,7 +55,9 @@ _buildcopr () {
 
 # TODO specify chroot(s) to build into
 _buildmock () {
-  mock "${srpmName}"
+# TODO extremely dirty hack
+[ "${projectName}" == "wannabe-epel" ] && mockopts="-r epel-7-x86_64"
+  mock ${mockopts} "${srpmName}"
 }
 
 _buildsrpm () {
