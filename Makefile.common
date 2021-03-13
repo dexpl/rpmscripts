@@ -1,5 +1,5 @@
-# TODO utilize ~/rpmbuild/* (how?)
 .PHONY: rpm srpm
+.SILENT:
 
 #specfile MUST be defined upstream
 #coprproject MUST be defined upstream
@@ -10,8 +10,10 @@ mockrpmfiles := $(addprefix $(mockresultdir)/,$(rpmfiles))
 # TODO report (or better fix) spectool's inability to list sources and patches separately
 #sourcefiles := $(shell spectool --sources $(specfile) | cut -d ' ' -f 2)
 #patchfiles := $(shell spectool --patches $(specfile) | cut -d ' ' -f 2)
-srcurls := $(shell spectool --all $(specfile) | cut -d ' ' -f 2)
+srcurls != spectool --all $(specfile) | cut -d ' ' -f 2
 srcfiles := $(notdir $(srcurls))
+# TODO utilize ~/rpmbuild/* (how?)
+rpmbuildopts := -D '_sourcedir .' -D '_srcrpmdir .'
 
 rpm: $(rpmfiles)
 
@@ -28,7 +30,7 @@ $(srcfiles):
 
 $(srpmfile): $(specfile) $(srcfiles)
 	rpmlint $<
-	rpmbuild -D '%_sourcedir .' -D '%_srcrpmdir .' -bs $<
+	rpmbuild $(rpmbuildopts) -bs $<
 
 $(rpmfiles): $(mockrpmfiles)
 	install -D -m 0644 -p $^ .
