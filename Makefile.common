@@ -5,7 +5,8 @@
 #coprproject MUST be defined upstream
 mockresultdir := mockresult
 srpmfile := $(addsuffix .src.rpm,$(shell rpmspec --srpm --query --qf '%{nevr}' $(specfile)))
-rpmfiles := $(addsuffix .rpm,$(shell rpmspec --rpms --query $(specfile)))
+# This requires rpmspec >= 4.14.2.1
+rpmfiles := $(addsuffix .rpm,$(shell rpmspec --builtrpms --query $(specfile)))
 mockrpmfiles := $(addprefix $(mockresultdir)/,$(rpmfiles))
 # TODO report (or better fix) spectool's inability to list sources and patches separately
 #sourcefiles := $(shell spectool --sources $(specfile) | cut -d ' ' -f 2)
