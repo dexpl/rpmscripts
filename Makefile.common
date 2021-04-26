@@ -38,4 +38,4 @@ $(rpmfiles): $(mockrpmfiles)
 
 $(mockrpmfiles)&: $(srpmfile)
 	rpmlint $<
-	mock --resultdir $(mockresultdir) $<
+	mock --resultdir $(mockresultdir) $(mockopts) $<
