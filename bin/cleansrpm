@@ -1,0 +1,10 @@
+#!/bin/bash
+
+set -e
+
+specdir="$(rpm -E %_specdir)"
+for srpm in "${@}"; do
+	spec=$(rpm -qpl "${srpm}" | grep -e '\.spec$')
+	rpm -ihv "${srpm}"
+	rpmbuild --clean --rmsource --rmspec "${specdir}/${spec}"
+done
